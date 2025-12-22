@@ -37,7 +37,9 @@ export default function StockAnalyzer() {
   const {
     watchlist, watchlistData, loadingSymbols, lastRefresh,
     addToWatchlist, removeFromWatchlist, isInWatchlist,
-    fetchSymbolData, refreshAll, moveUp, moveDown
+    fetchSymbolData, refreshAll, moveUp, moveDown,
+    analyzing, analyzeProgress, currentAnalyzing, analysisResults,
+    analyzeAll, stopAnalyzeAll, clearAnalysisResults
   } = useWatchlist();
 
   const autoScan = useAutoScan();
@@ -200,6 +202,13 @@ export default function StockAnalyzer() {
               selectSuggestion(sym);
               setActiveTab('analyse');
             }}
+            analyzing={analyzing}
+            analyzeProgress={analyzeProgress}
+            currentAnalyzing={currentAnalyzing}
+            analysisResults={analysisResults}
+            onAnalyzeAll={analyzeAll}
+            onStopAnalyzeAll={stopAnalyzeAll}
+            onClearAnalysisResults={clearAnalysisResults}
           />
         )}
       </div>
@@ -1441,9 +1450,15 @@ function AutoScanTab({ autoScan, onAnalyze, addToWatchlist, isInWatchlist }) {
 
 function WatchlistTab({
   watchlist, watchlistData, loadingSymbols, lastRefresh,
-  onRefreshAll, onRefreshSymbol, onRemove, onMoveUp, onMoveDown, onAnalyze
+  onRefreshAll, onRefreshSymbol, onRemove, onMoveUp, onMoveDown, onAnalyze,
+  analyzing, analyzeProgress, currentAnalyzing, analysisResults,
+  onAnalyzeAll, onStopAnalyzeAll, onClearAnalysisResults
 }) {
   const isAnyLoading = Object.values(loadingSymbols).some(Boolean);
+  const hasResults = Object.keys(analysisResults).length > 0;
+
+  // Sort results by bullish percentage
+  const sortedResults = Object.values(analysisResults).sort((a, b) => b.bullishPercent - a.bullishPercent);
 
   if (watchlist.length === 0) {
     return (
@@ -1469,7 +1484,7 @@ function WatchlistTab({
               <p className="text-slate-400 text-sm">{watchlist.length} Aktie{watchlist.length !== 1 ? 'n' : ''}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {lastRefresh && (
               <span className="text-slate-500 text-xs">
                 Aktualisiert: {new Date(lastRefresh).toLocaleTimeString('de-DE')}
@@ -1477,15 +1492,140 @@ function WatchlistTab({
             )}
             <button
               onClick={onRefreshAll}
-              disabled={isAnyLoading}
+              disabled={isAnyLoading || analyzing}
               className="px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 text-white font-semibold rounded-lg flex items-center gap-2 transition-colors"
             >
               <RefreshCw className={`w-4 h-4 ${isAnyLoading ? 'animate-spin' : ''}`} />
-              Alle aktualisieren
+              Aktualisieren
             </button>
+            {!analyzing ? (
+              <button
+                onClick={onAnalyzeAll}
+                disabled={isAnyLoading}
+                className="px-4 py-2 text-white font-semibold rounded-lg flex items-center gap-2 transition-colors"
+                style={{ backgroundColor: BIMATIC_BLUE }}
+              >
+                <BarChart3 className="w-4 h-4" />
+                Alle analysieren
+              </button>
+            ) : (
+              <button
+                onClick={onStopAnalyzeAll}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg flex items-center gap-2 transition-colors"
+              >
+                <Pause className="w-4 h-4" />
+                Stoppen
+              </button>
+            )}
           </div>
         </div>
+
+        {/* Analysis Progress */}
+        {analyzing && (
+          <div className="mt-4">
+            <div className="flex justify-between text-sm mb-2">
+              <span className="text-slate-400 flex items-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Analysiere: <span className="text-white font-bold">{currentAnalyzing}</span>
+              </span>
+              <span className="text-slate-400">{analyzeProgress}%</span>
+            </div>
+            <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
+              <div
+                className="h-full transition-all duration-300"
+                style={{ width: `${analyzeProgress}%`, backgroundColor: BIMATIC_BLUE }}
+              />
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Analysis Results */}
+      {hasResults && (
+        <div className="bg-slate-900 border-2 border-green-600/50 rounded-xl p-4">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-green-400" />
+              <h3 className="text-lg font-bold text-white">Analyseergebnisse</h3>
+              <span className="text-slate-400 text-sm">({sortedResults.length} Aktien, sortiert nach Bullish %)</span>
+            </div>
+            <button
+              onClick={onClearAnalysisResults}
+              className="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm rounded-lg transition-colors"
+            >
+              Schliessen
+            </button>
+          </div>
+
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {sortedResults.map((result) => (
+              <div
+                key={result.symbol}
+                className={`flex items-center justify-between p-3 rounded-lg transition-colors ${
+                  result.bullishPercent >= 70
+                    ? 'bg-green-900/30 border border-green-600'
+                    : result.bullishPercent <= 30
+                    ? 'bg-red-900/30 border border-red-600'
+                    : 'bg-slate-800 border border-slate-600'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-12 h-12 rounded-lg flex items-center justify-center text-sm font-bold ${
+                    result.bullishPercent >= 70 ? 'bg-green-600 text-white' :
+                    result.bullishPercent <= 30 ? 'bg-red-600 text-white' :
+                    'bg-yellow-600 text-white'
+                  }`}>
+                    {result.bullishPercent}%
+                  </div>
+                  <div>
+                    <div className="text-white font-bold">{result.symbol}</div>
+                    <div className={`text-sm font-medium ${
+                      result.verdictType.includes('bullish') ? 'text-green-400' :
+                      result.verdictType.includes('bearish') ? 'text-red-400' :
+                      'text-yellow-400'
+                    }`}>
+                      {result.verdict}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <div className="text-right hidden sm:block">
+                    <div className="text-white font-semibold">
+                      {result.currency === 'USD' ? '$' : result.currency === 'EUR' ? '€' : result.currency + ' '}
+                      {result.price?.toFixed(2)}
+                    </div>
+                    <div className={`text-sm font-semibold ${parseFloat(result.priceChange) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {parseFloat(result.priceChange) >= 0 ? '+' : ''}{result.priceChange}%
+                    </div>
+                  </div>
+
+                  <div className="flex gap-1">
+                    <span className={`px-2 py-1 rounded text-xs font-bold ${
+                      result.trend === 'bullish' ? 'bg-green-900/50 text-green-400' : 'bg-red-900/50 text-red-400'
+                    }`}>
+                      {result.trend === 'bullish' ? '↗ Trend' : '↘ Trend'}
+                    </span>
+                    <span className={`px-2 py-1 rounded text-xs font-bold ${
+                      result.macdSignal === 'bullish' ? 'bg-green-900/50 text-green-400' : 'bg-red-900/50 text-red-400'
+                    }`}>
+                      MACD
+                    </span>
+                  </div>
+
+                  <button
+                    onClick={() => onAnalyze(result.symbol)}
+                    className="p-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
+                    title="Details ansehen"
+                  >
+                    <Eye className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Watchlist Items */}
       <div className="space-y-2">
