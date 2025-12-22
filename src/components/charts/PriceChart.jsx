@@ -5,6 +5,31 @@ import { ChartHeader } from '../ui';
 import { BIMATIC_BLUE, CHART_COLORS, TOOLTIP_STYLE } from '../../constants';
 
 /**
+ * Custom tooltip that shows full date
+ */
+function CustomTooltip({ active, payload, label }) {
+  if (!active || !payload || !payload.length) return null;
+
+  const data = payload[0]?.payload;
+  const fullDate = data?.fullDate;
+  const formattedDate = fullDate
+    ? fullDate.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })
+    : label;
+
+  return (
+    <div style={TOOLTIP_STYLE} className="p-3">
+      <div className="text-slate-300 text-sm font-semibold mb-2">{formattedDate}</div>
+      {payload.map((entry, i) => (
+        <div key={i} className="flex justify-between gap-4 text-sm">
+          <span style={{ color: entry.color }}>{entry.name}:</span>
+          <span className="font-bold text-white">{typeof entry.value === 'number' ? `$${entry.value.toFixed(2)}` : entry.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
  * Price chart with Fibonacci levels and Support/Resistance lines
  * @param {Object} props
  * @param {Array} props.data - Stock data array
@@ -30,7 +55,7 @@ export function PriceChart({ data, fibonacci, supportResistance }) {
           <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
           <XAxis dataKey="date" tick={{ fill: '#cbd5e1', fontSize: 11, fontWeight: 500 }} />
           <YAxis domain={['auto', 'auto']} tick={{ fill: '#cbd5e1', fontSize: 11, fontWeight: 500 }} />
-          <Tooltip contentStyle={TOOLTIP_STYLE} />
+          <Tooltip content={<CustomTooltip />} />
 
           {/* Fibonacci Levels */}
           {fibonacci?.levels.map((fib, i) => (

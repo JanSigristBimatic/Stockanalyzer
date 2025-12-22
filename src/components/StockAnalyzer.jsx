@@ -81,17 +81,19 @@ export default function StockAnalyzer() {
         {/* Tab Navigation */}
         <TabNavigation activeTab={activeTab} setActiveTab={setActiveTab} watchlistCount={watchlist.length} />
 
-        {/* Data Source & Time Controls (shown on all data tabs) */}
+        {/* Data Source Badge (shown on all data tabs) */}
         {stockData && ['analyse', 'kennzahlen', 'charts'].includes(activeTab) && (
-          <>
-            <DataSourceBadge dataInfo={dataInfo} />
-            <TimePeriodControls
-              timePeriod={timePeriod}
-              interval={interval}
-              onPeriodChange={changePeriod}
-              onIntervalChange={changeInterval}
-            />
-          </>
+          <DataSourceBadge dataInfo={dataInfo} />
+        )}
+
+        {/* Time Controls (only for analyse and charts, not kennzahlen) */}
+        {stockData && ['analyse', 'charts'].includes(activeTab) && (
+          <TimePeriodControls
+            timePeriod={timePeriod}
+            interval={interval}
+            onPeriodChange={changePeriod}
+            onIntervalChange={changeInterval}
+          />
         )}
 
         {/* Education Tab */}
@@ -249,7 +251,6 @@ function SearchBar({
                     onMouseDown={(e) => {
                       e.preventDefault();
                       onSelectAutocomplete(result);
-                      onSearch();
                     }}
                     className="w-full flex items-center gap-3 p-3 hover:bg-slate-800 border-b border-slate-800 last:border-b-0 transition-colors text-left"
                   >

@@ -70,13 +70,39 @@ export function useStockAnalysis() {
   }, [inputValue]);
 
   /**
-   * Selects an autocomplete result
+   * Selects an autocomplete result and triggers search
    */
-  const selectAutocomplete = useCallback((selected) => {
-    setInputValue(selected.symbol);
+  const selectAutocomplete = useCallback(async (selected) => {
+    const sym = selected.symbol;
+    setInputValue(sym);
     setShowAutocomplete(false);
     setAutocompleteResults([]);
-  }, []);
+
+    // Directly trigger search with the selected symbol
+    setSearching(true);
+    setError(null);
+    setSuggestions([]);
+    setShowSuggestions(false);
+
+    const directResult = await fetchStockData(sym);
+
+    if (directResult?.data?.length > 20) {
+      setSearching(false);
+      analyzeWithData(sym, directResult);
+    } else {
+      const variants = await searchSymbolVariants(sym);
+      setSearching(false);
+
+      if (variants.length === 1) {
+        selectSuggestion(variants[0].symbol);
+      } else if (variants.length > 1) {
+        setSuggestions(variants);
+        setShowSuggestions(true);
+      } else {
+        showNotFoundError(sym);
+      }
+    }
+  }, [analyzeWithData, showNotFoundError]);
 
   /**
    * Hides autocomplete dropdown

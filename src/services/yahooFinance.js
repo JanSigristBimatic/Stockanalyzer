@@ -79,8 +79,19 @@ export async function fetchStockData(symbol, period = '6M', interval = '1d') {
     const data = result.timestamp.map((ts, i) => {
       const date = new Date(ts * 1000);
       const hasIntraday = interval.includes('m') || interval.includes('h');
+      const needsYear = ['6M', '1Y', '2Y', '5Y'].includes(period);
+
+      let dateStr;
+      if (hasIntraday) {
+        dateStr = date.toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+      } else if (needsYear) {
+        dateStr = date.toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: '2-digit' });
+      } else {
+        dateStr = date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+      }
+
       return {
-        date: hasIntraday ? date.toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }),
+        date: dateStr,
         fullDate: date,
         open: quotes.open[i] ? +quotes.open[i].toFixed(2) : null,
         high: quotes.high[i] ? +quotes.high[i].toFixed(2) : null,
