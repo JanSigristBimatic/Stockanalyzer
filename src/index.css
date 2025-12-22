@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Bimatic Brand Styling */
+:root {
+  --bimatic-blue: #1E90FF;
+  --bimatic-light: #5CACFF;
+  --bimatic-dark: #0066CC;
+}
+
+body {
+  font-family: 'Roboto', 'Open Sans', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom scrollbar with Bimatic colors */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--bimatic-blue);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--bimatic-light);
+}
+
+/* Bimatic button styles */
+@layer components {
+  .btn-bimatic {
+    @apply px-6 py-3 bg-bimatic hover:bg-bimatic-light text-white font-bold rounded-xl transition-colors duration-200;
+  }
+
+  .btn-bimatic:disabled {
+    @apply bg-slate-700 text-slate-500 cursor-not-allowed;
+  }
+
+  .card-bimatic {
+    @apply bg-slate-900 border-2 border-slate-700 rounded-xl p-5 hover:border-bimatic/50 transition-colors duration-200;
+  }
+}
