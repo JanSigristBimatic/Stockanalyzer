@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 
 // Constants
-import { BIMATIC_BLUE, BIMATIC_LIGHT, INDICATOR_INFO, CHART_INTERVALS, AUTO_SCAN_PERIODS, BULLISH_THRESHOLDS } from '../constants';
+import { BIMATIC_BLUE, BIMATIC_LIGHT, INDICATOR_INFO, FUNDAMENTAL_INFO, CHART_INTERVALS, AUTO_SCAN_PERIODS, BULLISH_THRESHOLDS } from '../constants';
 
 // Hooks
 import { useStockAnalysis, useWatchlist, useAutoScan } from '../hooks';
@@ -178,6 +178,8 @@ export default function StockAnalyzer() {
               selectSuggestion(sym);
               setActiveTab('analyse');
             }}
+            addToWatchlist={addToWatchlist}
+            isInWatchlist={isInWatchlist}
           />
         )}
 
@@ -952,16 +954,42 @@ function EducationTab({ expandedCards, toggleCard }) {
             <GraduationCap className="w-7 h-7 text-white" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-white">Trading-Indikatoren verstehen</h2>
-            <p className="text-slate-400">Lerne, wie du die Charts richtig liest und interpretierst</p>
+            <h2 className="text-2xl font-bold text-white">Aktienanalyse verstehen</h2>
+            <p className="text-slate-400">Lerne technische Indikatoren und fundamentale Kennzahlen zu interpretieren</p>
           </div>
         </div>
         <p className="text-slate-300">
-          Technische Analyse hilft dir, Muster in Preisbewegungen zu erkennen und informierte Trading-Entscheidungen zu treffen.
-          Klicke auf die Karten unten, um mehr über jeden Indikator zu erfahren.
+          Erfolgreiche Anleger nutzen sowohl technische Analyse (Charts, Indikatoren) als auch fundamentale Analyse (Kennzahlen, Bewertung).
+          Klicke auf die Karten unten, um mehr über jeden Begriff zu erfahren.
         </p>
       </div>
 
+      {/* Fundamentale Kennzahlen */}
+      <div className="bg-slate-900/50 border-2 border-amber-600/50 rounded-xl p-4 mb-2">
+        <div className="flex items-center gap-2 mb-2">
+          <DollarSign className="w-6 h-6 text-amber-400" />
+          <h3 className="text-xl font-bold text-white">Fundamentale Kennzahlen</h3>
+        </div>
+        <p className="text-slate-400 text-sm">
+          Diese Kennzahlen zeigen die finanzielle Gesundheit und Bewertung eines Unternehmens.
+        </p>
+      </div>
+      <div className="grid gap-4">
+        {Object.entries(FUNDAMENTAL_INFO).map(([key, info]) => (
+          <EducationCard key={`fund-${key}`} info={info} isExpanded={expandedCards[`fund-${key}`]} onToggle={() => toggleCard(`fund-${key}`)} />
+        ))}
+      </div>
+
+      {/* Technische Indikatoren */}
+      <div className="bg-slate-900/50 border-2 border-cyan-600/50 rounded-xl p-4 mb-2 mt-8">
+        <div className="flex items-center gap-2 mb-2">
+          <BarChart3 className="w-6 h-6 text-cyan-400" />
+          <h3 className="text-xl font-bold text-white">Technische Indikatoren</h3>
+        </div>
+        <p className="text-slate-400 text-sm">
+          Diese Indikatoren helfen dir, Preisbewegungen und Trends in Charts zu analysieren.
+        </p>
+      </div>
       <div className="grid gap-4">
         {Object.entries(INDICATOR_INFO).map(([key, info]) => (
           <EducationCard key={key} info={info} isExpanded={expandedCards[key]} onToggle={() => toggleCard(key)} />
@@ -1053,7 +1081,7 @@ function EmptyState() {
 // Auto-Scan Components
 // ============================================================================
 
-function AutoScanTab({ autoScan, onAnalyze }) {
+function AutoScanTab({ autoScan, onAnalyze, addToWatchlist, isInWatchlist }) {
   const {
     scanning, paused, currentSymbol, scannedCount, skippedCount,
     foundStock, scanHistory, scanPeriod, threshold, totalSymbols, progress,
@@ -1285,14 +1313,33 @@ function AutoScanTab({ autoScan, onAnalyze }) {
             </div>
           </div>
 
-          <button
-            onClick={() => onAnalyze(foundStock.symbol)}
-            className="w-full px-6 py-3 text-white text-lg font-bold rounded-xl flex items-center justify-center gap-2 transition-colors"
-            style={{ backgroundColor: BIMATIC_BLUE }}
-          >
-            <Eye className="w-5 h-5" />
-            Details analysieren
-          </button>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button
+              onClick={() => onAnalyze(foundStock.symbol)}
+              className="flex-1 px-6 py-3 text-white text-lg font-bold rounded-xl flex items-center justify-center gap-2 transition-colors"
+              style={{ backgroundColor: BIMATIC_BLUE }}
+            >
+              <Eye className="w-5 h-5" />
+              Details analysieren
+            </button>
+            {isInWatchlist(foundStock.symbol) ? (
+              <button
+                disabled
+                className="flex-1 px-6 py-3 bg-amber-600 text-white text-lg font-bold rounded-xl flex items-center justify-center gap-2 opacity-75"
+              >
+                <Star className="w-5 h-5 fill-current" />
+                In Watchlist
+              </button>
+            ) : (
+              <button
+                onClick={() => addToWatchlist(foundStock.symbol)}
+                className="flex-1 px-6 py-3 bg-slate-700 hover:bg-amber-600 text-white text-lg font-bold rounded-xl flex items-center justify-center gap-2 transition-colors group"
+              >
+                <Star className="w-5 h-5 group-hover:fill-current" />
+                Zur Watchlist
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -1341,6 +1388,23 @@ function AutoScanTab({ autoScan, onAnalyze }) {
                   >
                     <Eye className="w-4 h-4" />
                   </button>
+                  {isInWatchlist(stock.symbol) ? (
+                    <button
+                      disabled
+                      className="p-2 bg-amber-600 text-white rounded-lg opacity-75"
+                      title="In Watchlist"
+                    >
+                      <Star className="w-4 h-4 fill-current" />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => addToWatchlist(stock.symbol)}
+                      className="p-2 bg-slate-700 hover:bg-amber-600 text-slate-400 hover:text-white rounded-lg transition-colors"
+                      title="Zur Watchlist hinzufügen"
+                    >
+                      <Star className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
