@@ -1,6 +1,7 @@
 import React from 'react';
 import { ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { Zap } from 'lucide-react';
+import { ChartHeader } from '../ui';
 import { CHART_COLORS, TOOLTIP_STYLE } from '../../constants';
 
 /**
@@ -16,11 +17,13 @@ export function ADXChart({ data }) {
   const minusDI = lastData?.minusDI;
 
   return (
-    <div className="bg-slate-900/60 backdrop-blur-sm rounded-xl p-4 border border-slate-700">
-      <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
-        <Zap className="w-4 h-4 text-yellow-400" />
-        ADX - Average Directional Index (Trendstärke)
-      </h4>
+    <div className="bg-slate-900 border-2 border-slate-700 rounded-xl p-5">
+      <ChartHeader
+        icon={Zap}
+        title="ADX - Average Directional Index (Trendstärke)"
+        color={CHART_COLORS.adx}
+        infoKey="adx"
+      />
 
       <ResponsiveContainer width="100%" height={140}>
         <ComposedChart data={chartData}>

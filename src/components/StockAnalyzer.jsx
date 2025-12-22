@@ -59,34 +59,66 @@ export default function StockAnalyzer() {
         {/* Tab Navigation */}
         <TabNavigation activeTab={activeTab} setActiveTab={setActiveTab} />
 
+        {/* Data Source & Time Controls (shown on all data tabs) */}
+        {stockData && ['analyse', 'kennzahlen', 'charts'].includes(activeTab) && (
+          <>
+            <DataSourceBadge dataInfo={dataInfo} />
+            <TimePeriodControls
+              timePeriod={timePeriod}
+              interval={interval}
+              onPeriodChange={changePeriod}
+              onIntervalChange={changeInterval}
+            />
+          </>
+        )}
+
         {/* Education Tab */}
         {activeTab === 'lernen' && (
           <EducationTab expandedCards={expandedCards} toggleCard={toggleCard} />
         )}
 
-        {/* Analysis Tab */}
+        {/* Analysis Tab - Gesamtbewertung, Kurs/RSI/Trend/MACD, Unternehmen */}
         {activeTab === 'analyse' && (
           <>
-            {/* Data Source Indicator */}
-            {stockData && <DataSourceBadge dataInfo={dataInfo} />}
-
-            {/* Time Period Controls */}
-            {stockData && (
-              <TimePeriodControls
-                timePeriod={timePeriod}
-                interval={interval}
-                onPeriodChange={changePeriod}
-                onIntervalChange={changeInterval}
-              />
-            )}
-
-            {/* Main Analysis Content */}
             {stockData && indicators && verdict && (
               <div className="space-y-6">
                 <VerdictCard verdict={verdict} />
                 <SummaryCards symbol={symbol} indicators={indicators} />
-                {fundamentalData && <FundamentalDataCard data={fundamentalData} />}
                 {companyInfo && <CompanyInfoCard info={companyInfo} />}
+                <Disclaimer />
+              </div>
+            )}
+            {!stockData && !loading && error && <ErrorState error={error} />}
+            {!stockData && !loading && !error && <EmptyState />}
+          </>
+        )}
+
+        {/* Kennzahlen Tab - Fundamentale Kennzahlen */}
+        {activeTab === 'kennzahlen' && (
+          <>
+            {stockData && fundamentalData && (
+              <div className="space-y-6">
+                <FundamentalDataCard data={fundamentalData} />
+                <Disclaimer />
+              </div>
+            )}
+            {stockData && !fundamentalData && (
+              <div className="text-center py-20">
+                <DollarSign className="w-16 h-16 text-slate-600 mx-auto mb-4" />
+                <p className="text-slate-300 text-xl font-semibold">Keine Kennzahlen verfügbar</p>
+                <p className="text-slate-400 mt-2">Für dieses Symbol sind keine fundamentalen Daten vorhanden.</p>
+              </div>
+            )}
+            {!stockData && !loading && error && <ErrorState error={error} />}
+            {!stockData && !loading && !error && <EmptyState />}
+          </>
+        )}
+
+        {/* Charts Tab - Alle Charts */}
+        {activeTab === 'charts' && (
+          <>
+            {stockData && indicators && (
+              <div className="space-y-6">
                 <PriceChart data={stockData} fibonacci={fibonacci} supportResistance={supportResistance} />
                 <FibonacciAndSRCards fibonacci={fibonacci} supportResistance={supportResistance} indicators={indicators} />
                 <RSIChart data={stockData} />
@@ -98,11 +130,7 @@ export default function StockAnalyzer() {
                 <Disclaimer />
               </div>
             )}
-
-            {/* Error State */}
             {!stockData && !loading && error && <ErrorState error={error} />}
-
-            {/* Empty State */}
             {!stockData && !loading && !error && <EmptyState />}
           </>
         )}
@@ -188,7 +216,7 @@ function ExchangeSuggestions({ suggestions, onSelect }) {
   );
 }
 
-function TabNavigation({ activeTab, setActiveTab, hasData }) {
+function TabNavigation({ activeTab, setActiveTab }) {
   const tabs = [
     { id: 'analyse', label: 'Analyse', icon: BarChart3 },
     { id: 'kennzahlen', label: 'Kennzahlen', icon: DollarSign },
@@ -413,7 +441,10 @@ function SummaryCards({ symbol, indicators }) {
       </div>
 
       <div className="bg-slate-900 border-2 border-slate-700 rounded-xl p-4">
-        <div className="text-slate-400 text-sm font-semibold mb-1">Trend (SMA)</div>
+        <div className="text-slate-400 text-sm font-semibold mb-1 flex items-center">
+          Trend (SMA)
+          <InfoTooltip info={INDICATOR_INFO.sma} />
+        </div>
         <div className="text-xl font-bold text-white mb-1">
           {indicators.shortTrend === 'bullish' ? '↗ Aufwärts' : '↘ Abwärts'}
         </div>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { ComposedChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Activity } from 'lucide-react';
+import { ChartHeader } from '../ui';
 import { CHART_COLORS, TOOLTIP_STYLE } from '../../constants';
 
 /**
@@ -12,11 +13,13 @@ export function ATRChart({ data }) {
   const chartData = data.slice(-60);
 
   return (
-    <div className="bg-slate-900/60 backdrop-blur-sm rounded-xl p-4 border border-slate-700">
-      <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
-        <Activity className="w-4 h-4 text-orange-400" />
-        ATR - Average True Range (Volatilität)
-      </h4>
+    <div className="bg-slate-900 border-2 border-slate-700 rounded-xl p-5">
+      <ChartHeader
+        icon={Activity}
+        title="ATR - Average True Range (Volatilität)"
+        color={CHART_COLORS.atr}
+        infoKey="atr"
+      />
 
       <ResponsiveContainer width="100%" height={140}>
         <ComposedChart data={chartData}>

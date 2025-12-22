@@ -118,5 +118,110 @@ Die 61.8% Marke ist besonders wichtig. Fällt der Kurs darunter, ist der vorheri
 
 **Trading-Tipp:**
 Kaufe nahe Support mit Stop-Loss darunter. Verkaufe nahe Resistance oder warte auf Durchbruch.`
+  },
+  sma: {
+    title: 'SMA (Simple Moving Average)',
+    short: 'Gleitender Durchschnitt der Kursbewegung zur Trenderkennung. SMA20 über SMA50 = Aufwärtstrend.',
+    full: `Der Simple Moving Average (SMA) glättet Kursbewegungen und hilft, den Trend zu erkennen.
+
+**Die wichtigsten SMAs:**
+• **SMA 20**: Kurzfristiger Trend (ca. 1 Monat Handelstage)
+• **SMA 50**: Mittelfristiger Trend (ca. 2-3 Monate)
+• **SMA 200**: Langfristiger Trend (ca. 1 Jahr)
+
+**Wie lesen?**
+- Kurs über SMA = Aufwärtstrend
+- Kurs unter SMA = Abwärtstrend
+- SMA 20 über SMA 50 = Bullish (Golden Cross wenn sie sich kreuzen)
+- SMA 20 unter SMA 50 = Bearish (Death Cross wenn sie sich kreuzen)
+
+**Wichtige Signale:**
+1. Golden Cross: SMA 50 kreuzt SMA 200 von unten = starkes Kaufsignal
+2. Death Cross: SMA 50 kreuzt SMA 200 von oben = starkes Verkaufssignal
+3. Kurs prallt am SMA ab = SMA fungiert als Support/Resistance
+
+**Tipp:**
+Je länger der SMA-Zeitraum, desto stärker ist das Signal, aber desto später kommt es. Nutze mehrere SMAs für Bestätigung.`
+  },
+  atr: {
+    title: 'ATR (Average True Range)',
+    short: 'Volatilitätsindikator der die durchschnittliche Kursschwankung misst. Höher = volatiler.',
+    full: `Der ATR misst die durchschnittliche Schwankungsbreite eines Wertpapiers über einen bestimmten Zeitraum (typisch 14 Tage).
+
+**Was zeigt der ATR?**
+• Hoher ATR = Hohe Volatilität, grosse Kursbewegungen
+• Niedriger ATR = Geringe Volatilität, ruhiger Markt
+• Steigender ATR = Zunehmende Unsicherheit/Bewegung
+• Fallender ATR = Beruhigung des Marktes
+
+**Praktische Anwendung:**
+• **Stop-Loss setzen**: Viele Trader setzen Stop-Loss bei 2x ATR unter dem Einstieg
+• **Positionsgrösse**: Bei hohem ATR kleinere Positionen wählen
+• **Ausbrüche erkennen**: ATR-Anstieg oft vor grossen Bewegungen
+
+**Beispiel Stop-Loss:**
+Bei einem ATR von 5$ und Einstieg bei 100$:
+- Stop-Loss bei 100$ - (2 x 5$) = 90$
+- Das gibt dem Trade genug "Raum zum Atmen"
+
+**Wichtig:**
+Der ATR zeigt NICHT die Richtung an, nur die Stärke der Bewegung! Kombiniere ihn mit Trendindikatoren.`
+  },
+  stochastic: {
+    title: 'Stochastik Oszillator',
+    short: 'Momentum-Indikator der zeigt, wo der Kurs relativ zu seiner Range steht. >80 überkauft, <20 überverkauft.',
+    full: `Der Stochastik Oszillator vergleicht den aktuellen Schlusskurs mit der Handelsspanne der letzten Perioden.
+
+**Die Komponenten:**
+• **%K (schnelle Linie)**: Reagiert schnell auf Preisänderungen
+• **%D (langsame Linie)**: Geglättete Version von %K (Signallinie)
+
+**Die wichtigen Zonen:**
+• **Über 80**: Überkauft - Kurs nahe am Hoch der Range
+• **Unter 20**: Überverkauft - Kurs nahe am Tief der Range
+• **Kreuzungen**: %K kreuzt %D = Handelssignal
+
+**Trading-Signale:**
+1. **Kaufsignal**: %K kreuzt %D von unten nach oben (besonders unter 20)
+2. **Verkaufssignal**: %K kreuzt %D von oben nach unten (besonders über 80)
+3. **Divergenzen**: Kurs macht neue Hochs/Tiefs, Stochastik nicht = Warnsignal
+
+**Unterschied zum RSI:**
+- RSI misst Momentum der Preisbewegung
+- Stochastik misst Position innerhalb der Range
+- Stochastik reagiert schneller, mehr Signale (auch Fehlsignale)
+
+**Tipp:**
+In starken Trends kann Stochastik lange im überkauften/überverkauften Bereich bleiben. Nicht gegen den Trend handeln!`
+  },
+  adx: {
+    title: 'ADX (Average Directional Index)',
+    short: 'Misst die Trendstärke (nicht Richtung). >25 = Trend vorhanden, <20 = Seitwärtsmarkt.',
+    full: `Der ADX misst, wie stark ein Trend ist - unabhängig davon, ob er aufwärts oder abwärts geht.
+
+**Die Komponenten:**
+• **ADX (gelb)**: Zeigt die Trendstärke (0-100)
+• **+DI (grün)**: Positive Richtungsbewegung (Aufwärtsdruck)
+• **-DI (rot)**: Negative Richtungsbewegung (Abwärtsdruck)
+
+**ADX-Interpretation:**
+• **0-20**: Kein oder schwacher Trend (Seitwärtsmarkt)
+• **20-40**: Moderater Trend
+• **40-60**: Starker Trend
+• **60+**: Sehr starker Trend (selten)
+
+**Trading-Signale:**
+1. **Kaufsignal**: +DI kreuzt -DI nach oben bei ADX > 20
+2. **Verkaufssignal**: -DI kreuzt +DI nach oben bei ADX > 20
+3. **Trend-Trading**: Bei ADX > 25 Trend folgen, nicht gegen ihn handeln
+4. **Range-Trading**: Bei ADX < 20 auf Ausbruch warten oder Range handeln
+
+**Strategische Nutzung:**
+- ADX steigt = Trend verstärkt sich (mit dem Trend gehen)
+- ADX fällt = Trend schwächt ab (Gewinne mitnehmen)
+- ADX unter 20 = Seitwärtsphase (Range-Strategien nutzen)
+
+**Wichtig:**
+Der ADX zeigt NUR die Stärke, nicht die Richtung! Für die Richtung schaue auf +DI vs -DI oder andere Trendindikatoren.`
   }
 };

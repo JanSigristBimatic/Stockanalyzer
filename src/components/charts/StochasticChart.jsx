@@ -1,6 +1,7 @@
 import React from 'react';
 import { ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { Activity } from 'lucide-react';
+import { ChartHeader } from '../ui';
 import { CHART_COLORS, TOOLTIP_STYLE } from '../../constants';
 
 /**
@@ -12,11 +13,13 @@ export function StochasticChart({ data }) {
   const chartData = data.slice(-60);
 
   return (
-    <div className="bg-slate-900/60 backdrop-blur-sm rounded-xl p-4 border border-slate-700">
-      <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
-        <Activity className="w-4 h-4 text-pink-400" />
-        Stochastik Oszillator
-      </h4>
+    <div className="bg-slate-900 border-2 border-slate-700 rounded-xl p-5">
+      <ChartHeader
+        icon={Activity}
+        title="Stochastik Oszillator"
+        color={CHART_COLORS.stochK}
+        infoKey="stochastic"
+      />
 
       <ResponsiveContainer width="100%" height={140}>
         <ComposedChart data={chartData}>
