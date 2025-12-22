@@ -1,15 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Search, Activity, BarChart3, Zap, Target, Loader2, AlertCircle, Wifi,
   Shield, AlertTriangle, Globe, Clock, Building2, DollarSign, GraduationCap,
-  TrendingUp, TrendingDown, Scale
+  TrendingUp, TrendingDown, Scale, Star, RefreshCw, Trash2, ChevronUp, ChevronDown, Eye
 } from 'lucide-react';
 
 // Constants
 import { BIMATIC_BLUE, BIMATIC_LIGHT, INDICATOR_INFO, CHART_INTERVALS } from '../constants';
 
 // Hooks
-import { useStockAnalysis } from '../hooks';
+import { useStockAnalysis, useWatchlist } from '../hooks';
 
 // UI Components
 import { SignalBadge, VerdictIcon, EducationCard, InfoTooltip } from './ui';
@@ -29,8 +29,25 @@ export default function StockAnalyzer() {
     symbol, inputValue, setInputValue, loading, searching, error,
     suggestions, showSuggestions, stockData, indicators, fibonacci,
     supportResistance, verdict, dataInfo, fundamentalData, companyInfo,
-    timePeriod, interval, handleSearch, selectSuggestion, changePeriod, changeInterval
+    timePeriod, interval, handleSearch, selectSuggestion, changePeriod, changeInterval,
+    autocompleteResults, showAutocomplete, autocompleteLoading, selectAutocomplete, hideAutocomplete
   } = useStockAnalysis();
+
+  const {
+    watchlist, watchlistData, loadingSymbols, lastRefresh,
+    addToWatchlist, removeFromWatchlist, isInWatchlist,
+    fetchSymbolData, refreshAll, moveUp, moveDown
+  } = useWatchlist();
+
+  // Auto-refresh watchlist data when switching to watchlist tab
+  useEffect(() => {
+    if (activeTab === 'watchlist' && watchlist.length > 0) {
+      const needsRefresh = watchlist.some(item => !watchlistData[item.symbol]);
+      if (needsRefresh) {
+        refreshAll();
+      }
+    }
+  }, [activeTab, watchlist, watchlistData, refreshAll]);
 
   const toggleCard = (key) => {
     setExpandedCards(prev => ({ ...prev, [key]: !prev[key] }));
@@ -42,13 +59,18 @@ export default function StockAnalyzer() {
         {/* Header */}
         <Header />
 
-        {/* Search */}
+        {/* Search with Autocomplete */}
         <SearchBar
           inputValue={inputValue}
           setInputValue={setInputValue}
           loading={loading}
           searching={searching}
           onSearch={handleSearch}
+          autocompleteResults={autocompleteResults}
+          showAutocomplete={showAutocomplete}
+          autocompleteLoading={autocompleteLoading}
+          onSelectAutocomplete={selectAutocomplete}
+          onBlur={hideAutocomplete}
         />
 
         {/* Exchange Suggestions */}
@@ -57,7 +79,7 @@ export default function StockAnalyzer() {
         )}
 
         {/* Tab Navigation */}
-        <TabNavigation activeTab={activeTab} setActiveTab={setActiveTab} />
+        <TabNavigation activeTab={activeTab} setActiveTab={setActiveTab} watchlistCount={watchlist.length} />
 
         {/* Data Source & Time Controls (shown on all data tabs) */}
         {stockData && ['analyse', 'kennzahlen', 'charts'].includes(activeTab) && (
@@ -83,6 +105,13 @@ export default function StockAnalyzer() {
             {stockData && indicators && verdict && (
               <div className="space-y-6">
                 <VerdictCard verdict={verdict} />
+                <WatchlistButton
+                  symbol={symbol}
+                  companyName={companyInfo?.name}
+                  isInWatchlist={isInWatchlist(symbol)}
+                  onAdd={() => addToWatchlist(symbol, companyInfo?.name)}
+                  onRemove={() => removeFromWatchlist(symbol)}
+                />
                 <SummaryCards symbol={symbol} indicators={indicators} />
                 {companyInfo && <CompanyInfoCard info={companyInfo} />}
                 <Disclaimer />
@@ -134,6 +163,26 @@ export default function StockAnalyzer() {
             {!stockData && !loading && !error && <EmptyState />}
           </>
         )}
+
+        {/* Watchlist Tab */}
+        {activeTab === 'watchlist' && (
+          <WatchlistTab
+            watchlist={watchlist}
+            watchlistData={watchlistData}
+            loadingSymbols={loadingSymbols}
+            lastRefresh={lastRefresh}
+            onRefreshAll={refreshAll}
+            onRefreshSymbol={fetchSymbolData}
+            onRemove={removeFromWatchlist}
+            onMoveUp={moveUp}
+            onMoveDown={moveDown}
+            onAnalyze={(sym) => {
+              setInputValue(sym);
+              selectSuggestion(sym);
+              setActiveTab('analyse');
+            }}
+          />
+        )}
       </div>
     </div>
   );
@@ -162,19 +211,69 @@ function Header() {
   );
 }
 
-function SearchBar({ inputValue, setInputValue, loading, searching, onSearch }) {
+function SearchBar({
+  inputValue, setInputValue, loading, searching, onSearch,
+  autocompleteResults, showAutocomplete, autocompleteLoading, onSelectAutocomplete, onBlur
+}) {
   return (
     <div className="flex flex-col sm:flex-row gap-3 mb-6">
       <div className="relative flex-1 max-w-lg">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 z-10" />
         <input
           type="text"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value.toUpperCase())}
           onKeyPress={(e) => e.key === 'Enter' && onSearch()}
-          placeholder="Symbol (z.B. NVDA, AAPL, ARYN)"
+          onBlur={onBlur}
+          placeholder="Symbol oder Firmenname (z.B. NVDA, Apple, Tesla)"
           className="w-full bg-slate-900 border-2 border-slate-600 rounded-xl pl-12 pr-4 py-3 text-white text-lg font-medium placeholder-slate-500 focus:outline-none focus:border-blue-400 transition-colors"
         />
+
+        {/* Autocomplete Dropdown */}
+        {showAutocomplete && (
+          <div className="absolute top-full left-0 right-0 mt-1 bg-slate-900 border-2 border-blue-400 rounded-xl shadow-xl z-50 max-h-80 overflow-y-auto">
+            {autocompleteLoading ? (
+              <div className="flex items-center gap-2 p-4 text-slate-400">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Suche...</span>
+              </div>
+            ) : (
+              <>
+                <div className="px-3 py-2 text-xs text-slate-500 border-b border-slate-700 flex items-center gap-1">
+                  <Search className="w-3 h-3" />
+                  {autocompleteResults.length} Ergebnis{autocompleteResults.length !== 1 ? 'se' : ''} gefunden
+                </div>
+                {autocompleteResults.map((result, i) => (
+                  <button
+                    key={i}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      onSelectAutocomplete(result);
+                      onSearch();
+                    }}
+                    className="w-full flex items-center gap-3 p-3 hover:bg-slate-800 border-b border-slate-800 last:border-b-0 transition-colors text-left"
+                  >
+                    <div className="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center text-xs font-bold text-blue-400 border border-slate-700">
+                      {result.type === 'ETF' ? 'ETF' : result.symbol.slice(0, 3)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-white font-bold">{result.symbol}</span>
+                        {result.type === 'ETF' && (
+                          <span className="text-xs bg-purple-900/50 text-purple-300 px-1.5 py-0.5 rounded">ETF</span>
+                        )}
+                      </div>
+                      <div className="text-slate-400 text-sm truncate">{result.name}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs text-slate-500">{result.exchangeDisplay}</div>
+                    </div>
+                  </button>
+                ))}
+              </>
+            )}
+          </div>
+        )}
       </div>
       <button
         onClick={onSearch}
@@ -216,17 +315,18 @@ function ExchangeSuggestions({ suggestions, onSelect }) {
   );
 }
 
-function TabNavigation({ activeTab, setActiveTab }) {
+function TabNavigation({ activeTab, setActiveTab, watchlistCount = 0 }) {
   const tabs = [
     { id: 'analyse', label: 'Analyse', icon: BarChart3 },
     { id: 'kennzahlen', label: 'Kennzahlen', icon: DollarSign },
     { id: 'charts', label: 'Charts', icon: Activity },
+    { id: 'watchlist', label: 'Watchlist', icon: Star, badge: watchlistCount },
     { id: 'lernen', label: 'Lernen', icon: GraduationCap }
   ];
 
   return (
     <div className="flex gap-2 mb-6 flex-wrap">
-      {tabs.map(({ id, label, icon: Icon }) => (
+      {tabs.map(({ id, label, icon: Icon, badge }) => (
         <button
           key={id}
           onClick={() => setActiveTab(id)}
@@ -237,6 +337,11 @@ function TabNavigation({ activeTab, setActiveTab }) {
         >
           <Icon className="w-4 h-4" />
           {label}
+          {badge > 0 && (
+            <span className="bg-amber-500 text-slate-900 text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+              {badge}
+            </span>
+          )}
         </button>
       ))}
     </div>
@@ -921,5 +1026,210 @@ function EmptyState() {
       <p className="text-slate-300 text-xl font-semibold">Gib ein Aktiensymbol ein</p>
       <p className="text-slate-400 mt-2">Beispiele: NVDA, AAPL, BABA, MSFT, GOOGL, AMZN, META, TSLA</p>
     </div>
+  );
+}
+
+// ============================================================================
+// Watchlist Components
+// ============================================================================
+
+function WatchlistTab({
+  watchlist, watchlistData, loadingSymbols, lastRefresh,
+  onRefreshAll, onRefreshSymbol, onRemove, onMoveUp, onMoveDown, onAnalyze
+}) {
+  const isAnyLoading = Object.values(loadingSymbols).some(Boolean);
+
+  if (watchlist.length === 0) {
+    return (
+      <div className="text-center py-20">
+        <Star className="w-16 h-16 text-slate-600 mx-auto mb-4" />
+        <p className="text-slate-300 text-xl font-semibold">Deine Watchlist ist leer</p>
+        <p className="text-slate-400 mt-2">
+          Analysiere eine Aktie und klicke auf "Zur Watchlist hinzufügen"
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="bg-slate-900 border-2 border-slate-700 rounded-xl p-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <Star className="w-6 h-6 text-amber-400" />
+            <div>
+              <h2 className="text-xl font-bold text-white">Meine Watchlist</h2>
+              <p className="text-slate-400 text-sm">{watchlist.length} Aktie{watchlist.length !== 1 ? 'n' : ''}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {lastRefresh && (
+              <span className="text-slate-500 text-xs">
+                Aktualisiert: {new Date(lastRefresh).toLocaleTimeString('de-DE')}
+              </span>
+            )}
+            <button
+              onClick={onRefreshAll}
+              disabled={isAnyLoading}
+              className="px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 text-white font-semibold rounded-lg flex items-center gap-2 transition-colors"
+            >
+              <RefreshCw className={`w-4 h-4 ${isAnyLoading ? 'animate-spin' : ''}`} />
+              Alle aktualisieren
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Watchlist Items */}
+      <div className="space-y-2">
+        {watchlist.map((item, index) => (
+          <WatchlistItem
+            key={item.symbol}
+            item={item}
+            data={watchlistData[item.symbol]}
+            isLoading={loadingSymbols[item.symbol]}
+            index={index}
+            isFirst={index === 0}
+            isLast={index === watchlist.length - 1}
+            onRefresh={() => onRefreshSymbol(item.symbol)}
+            onRemove={() => onRemove(item.symbol)}
+            onMoveUp={() => onMoveUp(index)}
+            onMoveDown={() => onMoveDown(index)}
+            onAnalyze={() => onAnalyze(item.symbol)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function WatchlistItem({
+  item, data, isLoading, isFirst, isLast,
+  onRefresh, onRemove, onMoveUp, onMoveDown, onAnalyze
+}) {
+  const changeColor = data?.change >= 0 ? 'text-green-400' : 'text-red-400';
+  const weekChangeColor = data?.weekChange >= 0 ? 'text-green-400' : 'text-red-400';
+
+  return (
+    <div className="bg-slate-900 border-2 border-slate-700 hover:border-slate-600 rounded-xl p-4 transition-colors">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+        {/* Symbol & Name */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-white font-bold text-lg">{item.symbol}</span>
+            {isLoading && <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />}
+          </div>
+          {item.name && (
+            <p className="text-slate-400 text-sm truncate">{item.name}</p>
+          )}
+        </div>
+
+        {/* Price Data */}
+        {data ? (
+          <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+            <div className="text-right">
+              <div className="text-white font-bold text-xl">
+                {data.currency === 'USD' ? '$' : data.currency === 'EUR' ? '€' : data.currency + ' '}
+                {data.price?.toFixed(2)}
+              </div>
+              <div className={`text-sm font-semibold flex items-center justify-end gap-1 ${changeColor}`}>
+                {data.change >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                {data.change >= 0 ? '+' : ''}{data.change}%
+              </div>
+            </div>
+
+            <div className="text-right hidden md:block">
+              <div className="text-slate-400 text-xs">7 Tage</div>
+              <div className={`text-sm font-semibold ${weekChangeColor}`}>
+                {data.weekChange >= 0 ? '+' : ''}{data.weekChange}%
+              </div>
+            </div>
+
+            {data.marketCap && (
+              <div className="text-right hidden lg:block">
+                <div className="text-slate-400 text-xs">Market Cap</div>
+                <div className="text-white text-sm font-semibold">
+                  {formatMarketCap(data.marketCap)}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="text-slate-500 text-sm">
+            {isLoading ? 'Lädt...' : 'Keine Daten'}
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className="flex items-center gap-1 sm:gap-2">
+          <button
+            onClick={onAnalyze}
+            className="p-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
+            title="Analysieren"
+          >
+            <Eye className="w-4 h-4" />
+          </button>
+          <button
+            onClick={onRefresh}
+            disabled={isLoading}
+            className="p-2 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 text-white rounded-lg transition-colors"
+            title="Aktualisieren"
+          >
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </button>
+          <div className="flex flex-col">
+            <button
+              onClick={onMoveUp}
+              disabled={isFirst}
+              className="p-1 hover:bg-slate-700 disabled:opacity-30 text-slate-400 hover:text-white rounded transition-colors"
+              title="Nach oben"
+            >
+              <ChevronUp className="w-4 h-4" />
+            </button>
+            <button
+              onClick={onMoveDown}
+              disabled={isLast}
+              className="p-1 hover:bg-slate-700 disabled:opacity-30 text-slate-400 hover:text-white rounded transition-colors"
+              title="Nach unten"
+            >
+              <ChevronDown className="w-4 h-4" />
+            </button>
+          </div>
+          <button
+            onClick={onRemove}
+            className="p-2 bg-red-900/50 hover:bg-red-800 text-red-400 hover:text-red-300 rounded-lg transition-colors"
+            title="Entfernen"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WatchlistButton({ symbol, companyName, isInWatchlist, onAdd, onRemove }) {
+  if (isInWatchlist) {
+    return (
+      <button
+        onClick={onRemove}
+        className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-3 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl transition-colors"
+      >
+        <Star className="w-5 h-5 fill-current" />
+        <span>{symbol} ist in deiner Watchlist</span>
+        <span className="text-amber-200 text-sm ml-2">(Klicken zum Entfernen)</span>
+      </button>
+    );
+  }
+
+  return (
+    <button
+      onClick={onAdd}
+      className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-3 bg-slate-700 hover:bg-amber-600 text-white font-bold rounded-xl transition-colors group"
+    >
+      <Star className="w-5 h-5 group-hover:fill-current" />
+      <span>Zur Watchlist hinzufügen</span>
+    </button>
   );
 }

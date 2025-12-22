@@ -1,6 +1,7 @@
 export {
   checkSymbolExists,
   searchSymbolVariants,
+  searchSymbols,
   fetchStockData,
   fetchFundamentalData,
   fetchCompanyInfo,

@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
-import { fetchStockData, fetchFundamentalData, fetchCompanyInfo, searchSymbolVariants } from '../services';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { fetchStockData, fetchFundamentalData, fetchCompanyInfo, searchSymbolVariants, searchSymbols } from '../services';
 import { calcSMA, calcEMA, calcRSI, calcMACD, calcBollinger, calcOBV, calcATR, calcStochastic, calcADX } from '../utils/indicators';
 import { calcFibonacci, calcSupportResistance, generateVerdict } from '../utils/analysis';
 
@@ -17,6 +17,12 @@ export function useStockAnalysis() {
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
+  // Autocomplete state
+  const [autocompleteResults, setAutocompleteResults] = useState([]);
+  const [showAutocomplete, setShowAutocomplete] = useState(false);
+  const [autocompleteLoading, setAutocompleteLoading] = useState(false);
+  const debounceRef = useRef(null);
+
   // Data state
   const [stockData, setStockData] = useState(null);
   const [indicators, setIndicators] = useState(null);
@@ -30,6 +36,55 @@ export function useStockAnalysis() {
   // Settings state
   const [timePeriod, setTimePeriod] = useState('6M');
   const [interval, setInterval] = useState('1d');
+
+  /**
+   * Debounced autocomplete search - triggers when user types
+   */
+  useEffect(() => {
+    // Clear previous timeout
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
+    // Don't search if input is too short or empty
+    if (!inputValue || inputValue.length < 2) {
+      setAutocompleteResults([]);
+      setShowAutocomplete(false);
+      return;
+    }
+
+    // Debounce the search by 300ms
+    debounceRef.current = setTimeout(async () => {
+      setAutocompleteLoading(true);
+      const results = await searchSymbols(inputValue);
+      setAutocompleteResults(results);
+      setShowAutocomplete(results.length > 0);
+      setAutocompleteLoading(false);
+    }, 300);
+
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, [inputValue]);
+
+  /**
+   * Selects an autocomplete result
+   */
+  const selectAutocomplete = useCallback((selected) => {
+    setInputValue(selected.symbol);
+    setShowAutocomplete(false);
+    setAutocompleteResults([]);
+  }, []);
+
+  /**
+   * Hides autocomplete dropdown
+   */
+  const hideAutocomplete = useCallback(() => {
+    // Small delay to allow click to register
+    setTimeout(() => setShowAutocomplete(false), 200);
+  }, []);
 
   /**
    * Processes raw stock data and calculates all indicators
@@ -247,6 +302,11 @@ export function useStockAnalysis() {
     suggestions,
     showSuggestions,
 
+    // Autocomplete state
+    autocompleteResults,
+    showAutocomplete,
+    autocompleteLoading,
+
     // Data state
     stockData,
     indicators,
@@ -264,6 +324,8 @@ export function useStockAnalysis() {
     // Actions
     handleSearch,
     selectSuggestion,
+    selectAutocomplete,
+    hideAutocomplete,
     changePeriod,
     changeInterval
   };
