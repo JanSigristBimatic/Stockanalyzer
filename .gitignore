@@ -32,3 +32,6 @@ Thumbs.db
 # Cache
 .cache
 .parcel-cache
+
+.vercel
+.env*.local
