@@ -108,7 +108,7 @@ export default function StockAnalyzer() {
         {activeTab === 'analyse' && (
           <>
             {stockData && indicators && verdict && (
-              <div className="space-y-6">
+              <div className="space-y-6" key={`analyse-${timePeriod}-${interval}`}>
                 <VerdictCard verdict={verdict} />
                 <WatchlistButton
                   symbol={symbol}
@@ -152,7 +152,7 @@ export default function StockAnalyzer() {
         {activeTab === 'charts' && (
           <>
             {stockData && indicators && (
-              <div className="space-y-6">
+              <div className="space-y-6" key={`charts-${timePeriod}-${interval}`}>
                 <PriceChart data={stockData} fibonacci={fibonacci} supportResistance={supportResistance} />
                 <FibonacciAndSRCards fibonacci={fibonacci} supportResistance={supportResistance} indicators={indicators} />
                 <RSIChart data={stockData} />
