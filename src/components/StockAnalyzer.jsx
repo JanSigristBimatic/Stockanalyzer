@@ -754,8 +754,8 @@ function FundamentalDataCard({ data }) {
               label="Empfehlung"
               value={getRecommendationLabel(data.recommendationKey)}
               highlight={
-                ['strongBuy', 'buy'].includes(data.recommendationKey) ? 'green'
-                : ['strongSell', 'sell'].includes(data.recommendationKey) ? 'red'
+                ['strongBuy', 'strong_buy', 'buy'].includes(data.recommendationKey) ? 'green'
+                : ['strongSell', 'strong_sell', 'sell', 'underperform'].includes(data.recommendationKey) ? 'red'
                 : null
               }
             />
@@ -769,10 +769,13 @@ function FundamentalDataCard({ data }) {
 function getRecommendationLabel(key) {
   const labels = {
     strongBuy: 'Stark Kaufen',
+    strong_buy: 'Stark Kaufen',
     buy: 'Kaufen',
     hold: 'Halten',
+    underperform: 'Untergewichten',
     sell: 'Verkaufen',
-    strongSell: 'Stark Verkaufen'
+    strongSell: 'Stark Verkaufen',
+    strong_sell: 'Stark Verkaufen'
   };
   return labels[key] || key;
 }
