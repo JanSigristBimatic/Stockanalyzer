@@ -3,6 +3,7 @@ import { ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, Respon
 import { Activity } from 'lucide-react';
 import { ChartHeader } from '../ui';
 import { CHART_COLORS, TOOLTIP_STYLE } from '../../constants';
+import { reduceChartData } from '../../utils/chartData';
 
 /**
  * Stochastic Oscillator chart
@@ -10,7 +11,7 @@ import { CHART_COLORS, TOOLTIP_STYLE } from '../../constants';
  * @param {Array} props.data - Stock data array with stochastic values
  */
 export function StochasticChart({ data }) {
-  const chartData = data.slice(-60);
+  const chartData = reduceChartData(data);
 
   return (
     <div className="bg-slate-900 border-2 border-slate-700 rounded-xl p-5">

@@ -3,6 +3,7 @@ import { ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Respons
 import { BarChart3 } from 'lucide-react';
 import { ChartHeader } from '../ui';
 import { BIMATIC_BLUE, CHART_COLORS, TOOLTIP_STYLE } from '../../constants';
+import { reduceChartData } from '../../utils/chartData';
 
 /**
  * MACD (Moving Average Convergence Divergence) chart
@@ -10,7 +11,7 @@ import { BIMATIC_BLUE, CHART_COLORS, TOOLTIP_STYLE } from '../../constants';
  * @param {Array} props.data - Stock data array with MACD values
  */
 export function MACDChart({ data }) {
-  const chartData = data.slice(-60);
+  const chartData = reduceChartData(data);
 
   return (
     <div className="bg-slate-900 border-2 border-slate-700 rounded-xl p-5">

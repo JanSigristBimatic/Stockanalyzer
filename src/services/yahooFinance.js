@@ -9,16 +9,17 @@ const getProxyUrl = () => {
 
 async function fetchWithProxy(url, timeout = 10000) {
   const proxyUrl = getProxyUrl();
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
     const response = await fetch(proxyUrl + encodeURIComponent(url), { signal: controller.signal });
-    clearTimeout(timeoutId);
-    if (response.ok) return response;
+    return { response, error: null };
   } catch (error) {
     console.error('Proxy fetch failed:', error.message);
+    return { response: null, error };
+  } finally {
+    clearTimeout(timeoutId);
   }
-  return null;
 }
 
 export function getTimePeriod(period) {
@@ -30,8 +31,8 @@ export function getTimePeriod(period) {
 export async function searchSymbols(query) {
   if (!query || query.length < 2) return [];
   const searchUrl = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=8&newsCount=0&enableFuzzyQuery=false&quotesQueryId=tss_match_phrase_query`;
-  const response = await fetchWithProxy(searchUrl, 5000);
-  if (!response) return [];
+  const { response } = await fetchWithProxy(searchUrl, 5000);
+  if (!response || !response.ok) return [];
   try {
     const json = await response.json();
     return (json.quotes || [])
@@ -44,8 +45,8 @@ export async function checkSymbolExists(symbol) {
   const period2 = Math.floor(Date.now() / 1000);
   const period1 = period2 - (7 * 24 * 60 * 60);
   const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?period1=${period1}&period2=${period2}&interval=1d`;
-  const response = await fetchWithProxy(yahooUrl);
-  if (!response) return null;
+  const { response } = await fetchWithProxy(yahooUrl);
+  if (!response || !response.ok) return null;
   try {
     const json = await response.json();
     const result = json.chart?.result?.[0];
@@ -69,12 +70,25 @@ export async function searchSymbolVariants(baseSymbol) {
 export async function fetchStockData(symbol, period = '6M', interval = '1d') {
   const { period1, period2 } = getTimePeriod(period);
   const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?period1=${period1}&period2=${period2}&interval=${interval}&includePrePost=false`;
-  const response = await fetchWithProxy(yahooUrl);
-  if (!response) return null;
+  const { response, error } = await fetchWithProxy(yahooUrl);
+  if (!response) {
+    return { error: { type: 'network', message: error?.message || 'Network error' } };
+  }
   try {
     const json = await response.json();
+    if (!response.ok) {
+      if (json?.chart?.error) {
+        return { error: { type: 'symbol', message: json.chart.error.description || 'Symbol not found' } };
+      }
+      return { error: { type: 'http', status: response.status } };
+    }
     const result = json.chart?.result?.[0];
-    if (!result?.timestamp || !result?.indicators?.quote?.[0]) return null;
+    if (json.chart?.error) {
+      return { error: { type: 'symbol', message: json.chart.error.description || 'Symbol not found' } };
+    }
+    if (!result?.timestamp || !result?.indicators?.quote?.[0]) {
+      return { error: { type: 'symbol', message: 'No data available' } };
+    }
     const quotes = result.indicators.quote[0];
     const data = result.timestamp.map((ts, i) => {
       const date = new Date(ts * 1000);
@@ -100,15 +114,17 @@ export async function fetchStockData(symbol, period = '6M', interval = '1d') {
         volume: quotes.volume[i] || 0
       };
     }).filter(d => d.close !== null);
-    if (data.length < 20) return null;
+    if (data.length < 20) return { error: { type: 'symbol', message: 'Insufficient data' } };
     return { data, realData: true, currency: result.meta.currency, exchange: result.meta.exchangeName };
-  } catch { return null; }
+  } catch {
+    return { error: { type: 'parse', message: 'Failed to parse response' } };
+  }
 }
 
 export async function fetchFundamentalData(symbol) {
   const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${symbol}?modules=defaultKeyStatistics,financialData,summaryDetail`;
-  const response = await fetchWithProxy(url);
-  if (!response) return null;
+  const { response } = await fetchWithProxy(url);
+  if (!response || !response.ok) return null;
   try {
     const json = await response.json();
     const result = json.quoteSummary?.result?.[0];
@@ -162,8 +178,8 @@ export async function fetchFundamentalData(symbol) {
 
 export async function fetchCompanyInfo(symbol) {
   const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${symbol}?modules=assetProfile,price`;
-  const response = await fetchWithProxy(url);
-  if (!response) return null;
+  const { response } = await fetchWithProxy(url);
+  if (!response || !response.ok) return null;
   try {
     const json = await response.json();
     const result = json.quoteSummary?.result?.[0];

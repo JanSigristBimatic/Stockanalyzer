@@ -4,6 +4,44 @@ const cors = require('cors');
 const app = express();
 const PORT = 3001;
 
+const ALLOWED_HOSTS = new Set(['query1.finance.yahoo.com', 'query2.finance.yahoo.com']);
+
+function normalizeYahooUrl(rawUrl) {
+  if (!rawUrl || typeof rawUrl !== 'string') {
+    return { error: 'Invalid url parameter' };
+  }
+
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(rawUrl);
+  } catch {
+    return { error: 'Invalid url parameter' };
+  }
+
+  if (parsedUrl.protocol !== 'https:') {
+    return { error: 'Only https urls are allowed' };
+  }
+  if (!ALLOWED_HOSTS.has(parsedUrl.hostname)) {
+    return { error: 'Host not allowed' };
+  }
+  if (parsedUrl.username || parsedUrl.password) {
+    return { error: 'Credentials not allowed' };
+  }
+  if (parsedUrl.port && parsedUrl.port !== '443') {
+    return { error: 'Port not allowed' };
+  }
+
+  return { url: parsedUrl };
+}
+
+function buildYahooUrl(rawUrl, crumb) {
+  const url = new URL(rawUrl);
+  if (url.pathname.includes('/v10/finance/quoteSummary/') && crumb) {
+    url.searchParams.set('crumb', crumb);
+  }
+  return url.toString();
+}
+
 // Enable CORS for all origins (localhost dev)
 app.use(cors());
 
@@ -64,21 +102,25 @@ async function getYahooAuth() {
  * Usage: GET /api/yahoo?url=<encoded-yahoo-url>
  */
 app.get('/api/yahoo', async (req, res) => {
-  const { url } = req.query;
+  const rawUrl = Array.isArray(req.query.url) ? req.query.url[0] : req.query.url;
 
-  if (!url) {
+  if (!rawUrl) {
     return res.status(400).json({ error: 'Missing url parameter' });
   }
+
+  const { url, error } = normalizeYahooUrl(rawUrl);
+  if (error) {
+    return res.status(400).json({ error });
+  }
+
+  const baseUrl = url.toString();
 
   try {
     // Get authentication
     const auth = await getYahooAuth();
 
     // Add crumb to URL if it's a quoteSummary request
-    let finalUrl = url;
-    if (url.includes('quoteSummary') && auth.crumb) {
-      finalUrl = url + (url.includes('?') ? '&' : '?') + 'crumb=' + encodeURIComponent(auth.crumb);
-    }
+    const finalUrl = buildYahooUrl(baseUrl, auth.crumb);
 
     const response = await fetch(finalUrl, {
       headers: {
@@ -96,10 +138,7 @@ app.get('/api/yahoo', async (req, res) => {
         const newAuth = await getYahooAuth();
 
         if (newAuth.crumb) {
-          let retryUrl = url;
-          if (url.includes('quoteSummary')) {
-            retryUrl = url + (url.includes('?') ? '&' : '?') + 'crumb=' + encodeURIComponent(newAuth.crumb);
-          }
+          const retryUrl = buildYahooUrl(baseUrl, newAuth.crumb);
 
           const retryResponse = await fetch(retryUrl, {
             headers: {

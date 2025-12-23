@@ -3,6 +3,7 @@ import { ComposedChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveCo
 import { Activity } from 'lucide-react';
 import { ChartHeader } from '../ui';
 import { CHART_COLORS, TOOLTIP_STYLE } from '../../constants';
+import { reduceChartData } from '../../utils/chartData';
 
 /**
  * ATR (Average True Range) volatility chart
@@ -10,7 +11,7 @@ import { CHART_COLORS, TOOLTIP_STYLE } from '../../constants';
  * @param {Array} props.data - Stock data array with ATR values
  */
 export function ATRChart({ data }) {
-  const chartData = data.slice(-60);
+  const chartData = reduceChartData(data);
 
   return (
     <div className="bg-slate-900 border-2 border-slate-700 rounded-xl p-5">

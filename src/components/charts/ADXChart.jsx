@@ -3,6 +3,7 @@ import { ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveCo
 import { Zap } from 'lucide-react';
 import { ChartHeader } from '../ui';
 import { CHART_COLORS, TOOLTIP_STYLE } from '../../constants';
+import { reduceChartData } from '../../utils/chartData';
 
 /**
  * ADX (Average Directional Index) trend strength chart
@@ -10,7 +11,7 @@ import { CHART_COLORS, TOOLTIP_STYLE } from '../../constants';
  * @param {Array} props.data - Stock data array with ADX values
  */
 export function ADXChart({ data }) {
-  const chartData = data.slice(-60);
+  const chartData = reduceChartData(data);
   const lastData = chartData[chartData.length - 1];
   const lastADX = lastData?.adx;
   const plusDI = lastData?.plusDI;

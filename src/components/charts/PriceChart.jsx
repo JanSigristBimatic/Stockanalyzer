@@ -3,11 +3,26 @@ import { ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, Respon
 import { BarChart3 } from 'lucide-react';
 import { ChartHeader } from '../ui';
 import { BIMATIC_BLUE, CHART_COLORS, TOOLTIP_STYLE } from '../../constants';
+import { reduceChartData } from '../../utils/chartData';
+
+function formatCurrencyValue(value, currency) {
+  if (typeof value !== 'number' || Number.isNaN(value)) return value;
+  if (!currency) return `$${value.toFixed(2)}`;
+
+  try {
+    return new Intl.NumberFormat('de-DE', {
+      style: 'currency',
+      currency
+    }).format(value);
+  } catch {
+    return `${currency} ${value.toFixed(2)}`;
+  }
+}
 
 /**
  * Custom tooltip that shows full date
  */
-function CustomTooltip({ active, payload, label }) {
+function CustomTooltip({ active, payload, label, currency }) {
   if (!active || !payload || !payload.length) return null;
 
   const data = payload[0]?.payload;
@@ -22,7 +37,7 @@ function CustomTooltip({ active, payload, label }) {
       {payload.map((entry, i) => (
         <div key={i} className="flex justify-between gap-4 text-sm">
           <span style={{ color: entry.color }}>{entry.name}:</span>
-          <span className="font-bold text-white">{typeof entry.value === 'number' ? `$${entry.value.toFixed(2)}` : entry.value}</span>
+          <span className="font-bold text-white">{formatCurrencyValue(entry.value, currency)}</span>
         </div>
       ))}
     </div>
@@ -35,9 +50,10 @@ function CustomTooltip({ active, payload, label }) {
  * @param {Array} props.data - Stock data array
  * @param {Object} props.fibonacci - Fibonacci levels
  * @param {Object} props.supportResistance - Support and resistance levels
+ * @param {string} [props.currency] - ISO currency code
  */
-export function PriceChart({ data, fibonacci, supportResistance }) {
-  const chartData = data.slice(-60);
+export function PriceChart({ data, fibonacci, supportResistance, currency }) {
+  const chartData = reduceChartData(data);
 
   return (
     <div className="bg-slate-900 border-2 border-slate-700 rounded-xl p-5">
@@ -55,7 +71,7 @@ export function PriceChart({ data, fibonacci, supportResistance }) {
           <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
           <XAxis dataKey="date" tick={{ fill: '#cbd5e1', fontSize: 11, fontWeight: 500 }} />
           <YAxis domain={['auto', 'auto']} tick={{ fill: '#cbd5e1', fontSize: 11, fontWeight: 500 }} />
-          <Tooltip content={<CustomTooltip />} />
+          <Tooltip content={<CustomTooltip currency={currency} />} />
 
           {/* Fibonacci Levels */}
           {fibonacci?.levels.map((fib, i) => (

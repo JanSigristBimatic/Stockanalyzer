@@ -155,7 +155,7 @@ export default function StockAnalyzer() {
           <>
             {stockData && indicators && (
               <div className="space-y-6" key={`charts-${timePeriod}-${interval}`}>
-                <PriceChart data={stockData} fibonacci={fibonacci} supportResistance={supportResistance} />
+                <PriceChart data={stockData} fibonacci={fibonacci} supportResistance={supportResistance} currency={dataInfo?.currency} />
                 <FibonacciAndSRCards fibonacci={fibonacci} supportResistance={supportResistance} indicators={indicators} />
                 <RSIChart data={stockData} />
                 <MACDChart data={stockData} />
@@ -251,7 +251,7 @@ function SearchBar({
           type="text"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value.toUpperCase())}
-          onKeyPress={(e) => e.key === 'Enter' && onSearch()}
+          onKeyDown={(e) => e.key === 'Enter' && onSearch()}
           onBlur={onBlur}
           placeholder="Symbol oder Firmenname (z.B. NVDA, Apple, Tesla)"
           className="w-full bg-slate-900 border-2 border-slate-600 rounded-xl pl-12 pr-4 py-3 text-white text-lg font-medium placeholder-slate-500 focus:outline-none focus:border-blue-400 transition-colors"

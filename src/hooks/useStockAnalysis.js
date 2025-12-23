@@ -15,6 +15,7 @@ export function useStockAnalysis() {
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [autocompleteLoading, setAutocompleteLoading] = useState(false);
   const debounceRef = useRef(null);
+  const autocompleteRequestRef = useRef(0);
   const [stockData, setStockData] = useState(null);
   const [indicators, setIndicators] = useState(null);
   const [fibonacci, setFibonacci] = useState(null);
@@ -28,23 +29,46 @@ export function useStockAnalysis() {
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    const requestId = autocompleteRequestRef.current + 1;
+    autocompleteRequestRef.current = requestId;
     if (!inputValue || inputValue.length < 2) {
       setAutocompleteResults([]);
       setShowAutocomplete(false);
+      setAutocompleteLoading(false);
       return;
     }
     debounceRef.current = setTimeout(async () => {
       setAutocompleteLoading(true);
-      const results = await searchSymbols(inputValue);
-      setAutocompleteResults(results);
-      setShowAutocomplete(results.length > 0);
-      setAutocompleteLoading(false);
+      try {
+        const results = await searchSymbols(inputValue);
+        if (autocompleteRequestRef.current !== requestId) return;
+        setAutocompleteResults(results);
+        setShowAutocomplete(results.length > 0);
+      } finally {
+        if (autocompleteRequestRef.current === requestId) {
+          setAutocompleteLoading(false);
+        }
+      }
     }, 300);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [inputValue]);
 
   const hideAutocomplete = useCallback(() => {
     setTimeout(() => setShowAutocomplete(false), 200);
+  }, []);
+
+  const getFetchErrorMessage = useCallback((error) => {
+    if (!error) return null;
+    if (error.type === 'network') {
+      return 'Netzwerkfehler beim Laden der Daten. Bitte prüfe Proxy oder Verbindung.';
+    }
+    if (error.type === 'http') {
+      return `Datenquelle antwortet mit Fehler ${error.status}. Bitte später erneut versuchen.`;
+    }
+    if (error.type === 'parse') {
+      return 'Antwort der Datenquelle konnte nicht verarbeitet werden.';
+    }
+    return 'Daten konnten nicht geladen werden.';
   }, []);
 
   const processData = useCallback((data, fundamentals = null) => {
@@ -134,12 +158,17 @@ export function useStockAnalysis() {
     setError(null);
     setSymbol(selectedSymbol);
     const result = await fetchStockData(selectedSymbol);
+    if (result?.error && result.error.type !== 'symbol') {
+      setError(getFetchErrorMessage(result.error));
+      setLoading(false);
+      return;
+    }
     if (result?.data?.length > 20) {
       analyzeWithData(selectedSymbol, result);
     } else {
       showNotFoundError(selectedSymbol);
     }
-  }, [analyzeWithData, showNotFoundError]);
+  }, [analyzeWithData, showNotFoundError, getFetchErrorMessage]);
 
   const handleSearch = useCallback(async () => {
     if (!inputValue.trim()) return;
@@ -149,6 +178,11 @@ export function useStockAnalysis() {
     setShowSuggestions(false);
     const upperSymbol = inputValue.toUpperCase();
     const directResult = await fetchStockData(upperSymbol);
+    if (directResult?.error && directResult.error.type !== 'symbol') {
+      setSearching(false);
+      setError(getFetchErrorMessage(directResult.error));
+      return;
+    }
     if (directResult?.data?.length > 20) {
       setSearching(false);
       analyzeWithData(upperSymbol, directResult);
@@ -176,6 +210,11 @@ export function useStockAnalysis() {
     setSuggestions([]);
     setShowSuggestions(false);
     const directResult = await fetchStockData(sym);
+    if (directResult?.error && directResult.error.type !== 'symbol') {
+      setSearching(false);
+      setError(getFetchErrorMessage(directResult.error));
+      return;
+    }
     if (directResult?.data?.length > 20) {
       setSearching(false);
       analyzeWithData(sym, directResult);
@@ -191,33 +230,47 @@ export function useStockAnalysis() {
         showNotFoundError(sym);
       }
     }
-  }, [analyzeWithData, showNotFoundError, selectSuggestion]);
+  }, [analyzeWithData, showNotFoundError, selectSuggestion, getFetchErrorMessage]);
 
   const changePeriod = useCallback(async (newPeriod) => {
     setTimePeriod(newPeriod);
-    const newInterval = ['1M', '3M'].includes(newPeriod) ? interval : '1d';
+    // Yahoo API limitiert historische Daten basierend auf Intervall:
+    // - 15m/1h: nur ~60-730 Tage verfügbar
+    // - 1d: bis zu 10+ Jahre verfügbar
+    // Daher: Bei längeren Zeiträumen (3M+) immer auf 1d wechseln
+    const newInterval = newPeriod === '1M' ? interval : '1d';
     if (newInterval !== interval) setInterval(newInterval);
     if (!symbol) return;
     setLoading(true);
     const result = await fetchStockData(symbol, newPeriod, newInterval);
+    if (result?.error) {
+      setError(getFetchErrorMessage(result.error));
+      setLoading(false);
+      return;
+    }
     if (result?.data) {
       await analyzeWithData(symbol, result);
     } else {
       setLoading(false);
     }
-  }, [symbol, interval, analyzeWithData]);
+  }, [symbol, interval, analyzeWithData, getFetchErrorMessage]);
 
   const changeInterval = useCallback(async (newInterval) => {
     setInterval(newInterval);
     if (!symbol) return;
     setLoading(true);
     const result = await fetchStockData(symbol, timePeriod, newInterval);
+    if (result?.error) {
+      setError(getFetchErrorMessage(result.error));
+      setLoading(false);
+      return;
+    }
     if (result?.data) {
       await analyzeWithData(symbol, result);
     } else {
       setLoading(false);
     }
-  }, [symbol, timePeriod, analyzeWithData]);
+  }, [symbol, timePeriod, analyzeWithData, getFetchErrorMessage]);
 
   return {
     symbol, inputValue, setInputValue, loading, searching, error, suggestions, showSuggestions,
