@@ -111,6 +111,25 @@ export function useStockAnalysis() {
     if (lastBB.upper && lastPrice > lastBB.upper - (lastBB.upper - lastBB.middle) * 0.2) bbPosition = 'upper';
     else if (lastBB.lower && lastPrice < lastBB.lower + (lastBB.middle - lastBB.lower) * 0.2) bbPosition = 'lower';
 
+    // Volume Analysis Data
+    const recentVolumes = displayData.slice(-20).map(d => d.volume);
+    const avgVolume = recentVolumes.reduce((a, b) => a + b, 0) / recentVolumes.length;
+    const currentVolume = displayData[displayData.length - 1].volume;
+
+    // OBV Trend: Vergleiche OBV der letzten 5 Tage mit den 5 Tagen davor
+    const obvRecent = obv.slice(-5);
+    const obvPrev = obv.slice(-10, -5);
+    const obvRecentAvg = obvRecent.reduce((a, b) => a + b, 0) / obvRecent.length;
+    const obvPrevAvg = obvPrev.reduce((a, b) => a + b, 0) / obvPrev.length;
+    const obvTrend = obvRecentAvg > obvPrevAvg * 1.02 ? 'rising' : obvRecentAvg < obvPrevAvg * 0.98 ? 'falling' : 'neutral';
+
+    // Preis-Richtung (letzte 5 Tage)
+    const priceDirection = lastPrice > displayData[displayData.length - 5]?.close ? 'up' : 'down';
+
+    // Volumen-Preis Bestätigung: Steigt der Preis mit steigendem OBV? Fällt er mit fallendem OBV?
+    const volumeConfirmation = (priceDirection === 'up' && obvTrend === 'rising') ||
+                               (priceDirection === 'down' && obvTrend === 'falling');
+
     const indicatorData = {
       lastPrice,
       priceChange: ((lastPrice - prevPrice) / prevPrice * 100).toFixed(2),
@@ -122,7 +141,15 @@ export function useStockAnalysis() {
       lastATR: atr[atr.length - 1],
       lastStochK: stochastic.stochK[stochastic.stochK.length - 1],
       lastStochD: stochastic.stochD[stochastic.stochD.length - 1],
-      lastADX: adxData.adx[adxData.adx.length - 1]
+      lastADX: adxData.adx[adxData.adx.length - 1],
+      // Volume Data für Analyse
+      volumeData: {
+        currentVolume,
+        avgVolume,
+        obvTrend,
+        priceDirection,
+        volumeConfirmation
+      }
     };
 
     setIndicators(indicatorData);

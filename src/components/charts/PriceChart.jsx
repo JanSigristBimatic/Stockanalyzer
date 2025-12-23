@@ -1,8 +1,8 @@
 import React from 'react';
 import { ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { BarChart3 } from 'lucide-react';
-import { ChartHeader } from '../ui';
-import { BIMATIC_BLUE, CHART_COLORS, TOOLTIP_STYLE } from '../../constants';
+import { ChartHeader, InfoTooltip } from '../ui';
+import { BIMATIC_BLUE, CHART_COLORS, TOOLTIP_STYLE, INDICATOR_INFO } from '../../constants';
 import { reduceChartData } from '../../utils/chartData';
 
 function formatCurrencyValue(value, currency) {
@@ -81,6 +81,13 @@ export function PriceChart({ data, fibonacci, supportResistance, currency }) {
               stroke={CHART_COLORS.fibonacci}
               strokeDasharray="4 4"
               strokeOpacity={0.5}
+              label={{
+                value: `${fib.label} (${formatCurrencyValue(fib.price, currency)})`,
+                position: 'right',
+                fill: CHART_COLORS.fibonacci,
+                fontSize: 10,
+                fontWeight: 500
+              }}
             />
           ))}
 
@@ -122,17 +129,27 @@ function Legend() {
       <LegendItem color={BIMATIC_BLUE} label="Kurs" />
       <LegendItem color={CHART_COLORS.sma20} label="SMA 20" />
       <LegendItem color={CHART_COLORS.sma50} label="SMA 50" />
+      <LegendItem color={CHART_COLORS.fibonacci} label="Fibonacci" dashed infoKey="fibonacci" />
       <LegendItem color={CHART_COLORS.support} label="Support" />
       <LegendItem color={CHART_COLORS.resistance} label="Resistance" />
     </div>
   );
 }
 
-function LegendItem({ color, label }) {
+function LegendItem({ color, label, dashed, infoKey }) {
+  const info = infoKey ? INDICATOR_INFO[infoKey] : null;
+
   return (
-    <span className="flex items-center gap-2">
-      <span className="w-4 h-1 rounded" style={{ backgroundColor: color }} />
+    <span className="flex items-center gap-1">
+      <span
+        className="w-4 h-1 rounded"
+        style={{
+          backgroundColor: dashed ? 'transparent' : color,
+          borderTop: dashed ? `2px dashed ${color}` : 'none'
+        }}
+      />
       {label}
+      {info && <InfoTooltip info={info} />}
     </span>
   );
 }

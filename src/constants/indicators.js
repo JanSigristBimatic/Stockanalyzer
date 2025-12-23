@@ -448,10 +448,22 @@ Je weiter die Linien von der Nulllinie entfernt sind, desto stärker der Trend. 
 • Steigendes OBV = Akkumulation (Käufer dominieren)
 • Fallendes OBV = Distribution (Verkäufer dominieren)
 
-**Wie lesen?**
-- Kurs steigt + Volumen steigt = gesunder Aufwärtstrend
-- Kurs steigt + Volumen fällt = schwacher Aufwärtstrend, Vorsicht!
-- OBV-Divergenzen zum Kurs sind starke Warnsignale`
+**Unsere Analyse prüft 3 Dinge:**
+
+1. **Volumen vs. 20-Tage-Durchschnitt**
+   - Über 150%: Starkes Signal (Kauf- oder Verkaufsdruck)
+   - Unter 50%: Schwache Bewegung, geringe Überzeugung
+
+2. **OBV-Trend (5 Tage)**
+   - Steigend: Akkumulation - Käufer sammeln Aktien ein
+   - Fallend: Distribution - grosse Anleger verkaufen
+
+3. **Preis-Volumen-Bestätigung**
+   - Preis steigt + OBV steigt = gesunder Trend ✓
+   - Preis steigt + OBV fällt = Divergenz, Vorsicht! ⚠️
+
+**Warum ist das wichtig?**
+"Volume precedes price" - Volumenänderungen zeigen oft Trendwenden, bevor der Preis reagiert. Eine Rallye ohne Volumen ist verdächtig!`
   },
   fibonacci: {
     title: 'Fibonacci Retracements',

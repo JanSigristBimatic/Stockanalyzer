@@ -533,6 +533,9 @@ function VerdictCard({ verdict }) {
 }
 
 function SignalItem({ signal }) {
+  // Prüfe ob es ein Volumen-Signal ist
+  const isVolumeSignal = signal.text?.includes('Volumen') || signal.text?.includes('OBV');
+
   return (
     <div
       className={`flex items-center gap-2 p-2 rounded-lg ${
@@ -542,7 +545,8 @@ function SignalItem({ signal }) {
       {signal.type === 'bullish' && <TrendingUp className="w-4 h-4 text-green-400 flex-shrink-0" />}
       {signal.type === 'bearish' && <TrendingDown className="w-4 h-4 text-red-400 flex-shrink-0" />}
       {signal.type === 'neutral' && <Scale className="w-4 h-4 text-yellow-400 flex-shrink-0" />}
-      <span className="text-white font-medium text-sm">{signal.text}</span>
+      <span className="text-white font-medium text-sm flex-1">{signal.text}</span>
+      {isVolumeSignal && <InfoTooltip info={INDICATOR_INFO.volume} />}
     </div>
   );
 }

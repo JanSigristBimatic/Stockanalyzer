@@ -12,6 +12,7 @@ const SIGNAL_WEIGHTS = {
   bollinger: 1,
   fibonacci: 1,
   supportResistance: 1,
+  volume: 1.5,  // Volumen-Analyse
   // Fundamental indicators
   peg: 2,
   pe: 1,
@@ -124,6 +125,17 @@ function analyzeIndicators(indicators, fibonacci, supportResistance, lastPrice) 
     else bearishSignals += SIGNAL_WEIGHTS.supportResistance;
   });
 
+  // Volume Analysis
+  const volumeResult = analyzeVolume(indicators.volumeData);
+  if (volumeResult) {
+    volumeResult.signals.forEach(s => {
+      signals.push({ type: s.type, text: s.text });
+    });
+    if (volumeResult.type === 'bullish') bullishSignals += volumeResult.weight;
+    else if (volumeResult.type === 'bearish') bearishSignals += volumeResult.weight;
+    else neutralSignals += volumeResult.weight;
+  }
+
   return { bullishSignals, bearishSignals, neutralSignals, signals };
 }
 
@@ -215,6 +227,75 @@ function analyzeSupportResistance(sr, price) {
   }
 
   return signals;
+}
+
+/**
+ * Analyzes Volume indicators
+ * @param {Object} volumeData - Volume analysis data
+ * @returns {Object} - Analysis result with type, weight and signal
+ */
+function analyzeVolume(volumeData) {
+  if (!volumeData) return null;
+
+  const { currentVolume, avgVolume, obvTrend, priceDirection, volumeConfirmation } = volumeData;
+  const signals = [];
+  let totalBullish = 0;
+  let totalBearish = 0;
+
+  // 1. Volume vs Average (hohes Volumen = starke Überzeugung)
+  if (currentVolume && avgVolume && avgVolume > 0) {
+    const volumeRatio = currentVolume / avgVolume;
+
+    if (volumeRatio > 1.5) {
+      // Hohes Volumen - Richtung wichtig
+      if (priceDirection === 'up') {
+        signals.push({ type: 'bullish', text: `Volumen ${(volumeRatio * 100).toFixed(0)}% über Durchschnitt (starker Kaufdruck)` });
+        totalBullish += 0.5;
+      } else {
+        signals.push({ type: 'bearish', text: `Volumen ${(volumeRatio * 100).toFixed(0)}% über Durchschnitt (starker Verkaufsdruck)` });
+        totalBearish += 0.5;
+      }
+    } else if (volumeRatio < 0.5) {
+      // Niedriges Volumen - schwache Überzeugung
+      signals.push({ type: 'neutral', text: `Volumen ${(volumeRatio * 100).toFixed(0)}% unter Durchschnitt (schwache Bewegung)` });
+    }
+  }
+
+  // 2. OBV Trend (Akkumulation vs Distribution)
+  if (obvTrend) {
+    if (obvTrend === 'rising') {
+      signals.push({ type: 'bullish', text: 'OBV steigend (Akkumulation)' });
+      totalBullish += 0.5;
+    } else if (obvTrend === 'falling') {
+      signals.push({ type: 'bearish', text: 'OBV fallend (Distribution)' });
+      totalBearish += 0.5;
+    }
+  }
+
+  // 3. Preis-Volumen Bestätigung/Divergenz
+  if (volumeConfirmation !== undefined) {
+    if (volumeConfirmation) {
+      signals.push({ type: 'bullish', text: 'Volumen bestätigt Preistrend' });
+      totalBullish += 0.5;
+    } else {
+      signals.push({ type: 'bearish', text: 'Volumen-Preis-Divergenz (Vorsicht!)' });
+      totalBearish += 0.5;
+    }
+  }
+
+  // Falls keine Signale gefunden wurden
+  if (signals.length === 0) return null;
+
+  // Bestimme Gesamttyp
+  let type = 'neutral';
+  if (totalBullish > totalBearish) type = 'bullish';
+  else if (totalBearish > totalBullish) type = 'bearish';
+
+  return {
+    type,
+    weight: SIGNAL_WEIGHTS.volume,
+    signals
+  };
 }
 
 /**
