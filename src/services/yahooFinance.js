@@ -22,10 +22,19 @@ async function fetchWithProxy(url, timeout = 10000) {
   }
 }
 
-export function getTimePeriod(period) {
+// Extra time needed for SMA calculation (50 bars) based on interval
+const SMA_PREFETCH_SECONDS = {
+  '15m': 50 * 15 * 60,      // 50 * 15 minutes
+  '1h': 50 * 60 * 60,       // 50 hours
+  '1d': 50 * 24 * 60 * 60,  // 50 days
+};
+
+export function getTimePeriod(period, interval = '1d') {
   const period2 = Math.floor(Date.now() / 1000);
-  const period1 = period2 - (TIME_PERIODS[period] || TIME_PERIODS['6M']);
-  return { period1, period2 };
+  const basePeriod = TIME_PERIODS[period] || TIME_PERIODS['6M'];
+  const prefetchTime = SMA_PREFETCH_SECONDS[interval] || SMA_PREFETCH_SECONDS['1d'];
+  const period1 = period2 - basePeriod - prefetchTime;
+  return { period1, period2, prefetchTime };
 }
 
 export async function searchSymbols(query) {
@@ -68,7 +77,7 @@ export async function searchSymbolVariants(baseSymbol) {
 }
 
 export async function fetchStockData(symbol, period = '6M', interval = '1d') {
-  const { period1, period2 } = getTimePeriod(period);
+  const { period1, period2, prefetchTime } = getTimePeriod(period, interval);
   const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?period1=${period1}&period2=${period2}&interval=${interval}&includePrePost=false`;
   const { response, error } = await fetchWithProxy(yahooUrl);
   if (!response) {
@@ -90,6 +99,10 @@ export async function fetchStockData(symbol, period = '6M', interval = '1d') {
       return { error: { type: 'symbol', message: 'No data available' } };
     }
     const quotes = result.indicators.quote[0];
+
+    // Calculate the cutoff timestamp for the actual requested period
+    const displayCutoffTimestamp = period2 - (TIME_PERIODS[period] || TIME_PERIODS['6M']);
+
     const data = result.timestamp.map((ts, i) => {
       const date = new Date(ts * 1000);
       const hasIntraday = interval.includes('m') || interval.includes('h');
@@ -107,6 +120,7 @@ export async function fetchStockData(symbol, period = '6M', interval = '1d') {
       return {
         date: dateStr,
         fullDate: date,
+        timestamp: ts,
         open: quotes.open[i] ? +quotes.open[i].toFixed(2) : null,
         high: quotes.high[i] ? +quotes.high[i].toFixed(2) : null,
         low: quotes.low[i] ? +quotes.low[i].toFixed(2) : null,
@@ -114,8 +128,19 @@ export async function fetchStockData(symbol, period = '6M', interval = '1d') {
         volume: quotes.volume[i] || 0
       };
     }).filter(d => d.close !== null);
+
     if (data.length < 20) return { error: { type: 'symbol', message: 'Insufficient data' } };
-    return { data, realData: true, currency: result.meta.currency, exchange: result.meta.exchangeName };
+
+    // Count how many data points are prefetch data (before the display cutoff)
+    const prefetchCount = data.filter(d => d.timestamp < displayCutoffTimestamp).length;
+
+    return {
+      data,
+      prefetchCount,
+      realData: true,
+      currency: result.meta.currency,
+      exchange: result.meta.exchangeName
+    };
   } catch {
     return { error: { type: 'parse', message: 'Failed to parse response' } };
   }

@@ -71,7 +71,8 @@ export function useStockAnalysis() {
     return 'Daten konnten nicht geladen werden.';
   }, []);
 
-  const processData = useCallback((data, fundamentals = null) => {
+  const processData = useCallback((data, fundamentals = null, prefetchCount = 0) => {
+    // Calculate indicators on full data (including prefetch) so SMAs are valid from display start
     const sma20 = calcSMA(data, 20);
     const sma50 = calcSMA(data, 50);
     const rsi = calcRSI(data);
@@ -81,10 +82,9 @@ export function useStockAnalysis() {
     const atr = calcATR(data);
     const stochastic = calcStochastic(data);
     const adxData = calcADX(data);
-    const fib = calcFibonacci(data);
-    const sr = calcSupportResistance(data);
 
-    const enrichedData = data.map((d, i) => ({
+    // Enrich full data with indicators
+    const fullEnrichedData = data.map((d, i) => ({
       ...d,
       sma20: sma20[i], sma50: sma50[i], rsi: rsi[i],
       macd: macd.macdLine[i], signal: macd.signalLine[i], histogram: macd.histogram[i],
@@ -94,8 +94,16 @@ export function useStockAnalysis() {
       adx: adxData.adx[i], plusDI: adxData.plusDI[i], minusDI: adxData.minusDI[i]
     }));
 
-    const lastPrice = data[data.length - 1].close;
-    const prevPrice = data[data.length - 2].close;
+    // Trim prefetch data - only display data from requested period onward
+    const enrichedData = fullEnrichedData.slice(prefetchCount);
+    const displayData = data.slice(prefetchCount);
+
+    // Calculate Fibonacci and S/R on display data only
+    const fib = calcFibonacci(displayData);
+    const sr = calcSupportResistance(displayData);
+
+    const lastPrice = displayData[displayData.length - 1].close;
+    const prevPrice = displayData[displayData.length - 2].close;
     const lastRSI = rsi[rsi.length - 1];
     const lastBB = bollinger[bollinger.length - 1];
 
@@ -134,7 +142,7 @@ export function useStockAnalysis() {
     ]);
     setFundamentalData(fundamentals);
     setCompanyInfo(company);
-    processData(result.data, fundamentals);
+    processData(result.data, fundamentals, result.prefetchCount || 0);
   }, [processData]);
 
   const showNotFoundError = useCallback((sym) => {

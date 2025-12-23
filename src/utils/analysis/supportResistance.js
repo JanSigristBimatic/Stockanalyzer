@@ -1,12 +1,12 @@
 /**
- * Tolerance for grouping nearby price levels (2%)
+ * Base tolerance for grouping nearby price levels (2%)
  */
-const PRICE_TOLERANCE = 0.02;
+const BASE_PRICE_TOLERANCE = 0.02;
 
 /**
- * Minimum touches required for a valid level
+ * Minimum touches required for a valid level (for longer timeframes)
  */
-const MIN_TOUCHES = 2;
+const BASE_MIN_TOUCHES = 2;
 
 /**
  * Maximum levels to return per type
@@ -14,36 +14,79 @@ const MIN_TOUCHES = 2;
 const MAX_LEVELS = 3;
 
 /**
+ * Threshold for considering data as "short timeframe"
+ */
+const SHORT_TIMEFRAME_THRESHOLD = 40;
+
+/**
+ * Gets dynamic parameters based on data length
+ * @param {number} dataLength - Number of data points
+ * @returns {{minTouches: number, priceTolerance: number, pivotWindow: number}}
+ */
+function getDynamicParams(dataLength) {
+  // For short timeframes (< 40 data points), be more lenient
+  if (dataLength < SHORT_TIMEFRAME_THRESHOLD) {
+    return {
+      minTouches: 1, // Accept single-touch pivots for short timeframes
+      priceTolerance: 0.03, // Wider tolerance (3%) to group more levels
+      pivotWindow: 1 // Smaller window for pivot detection
+    };
+  }
+
+  // For medium timeframes (40-100 data points)
+  if (dataLength < 100) {
+    return {
+      minTouches: 2,
+      priceTolerance: 0.025, // 2.5% tolerance
+      pivotWindow: 2
+    };
+  }
+
+  // For longer timeframes (100+ data points)
+  return {
+    minTouches: BASE_MIN_TOUCHES,
+    priceTolerance: BASE_PRICE_TOLERANCE,
+    pivotWindow: 2
+  };
+}
+
+/**
  * Detects Support and Resistance levels from price data
  * @param {Array} data - Array of price data with 'high', 'low', 'close' properties
  * @returns {{support: Array, resistance: Array}}
  */
 export function calcSupportResistance(data) {
-  const pivots = findPivotPoints(data);
+  if (!data || data.length < 5) {
+    return { support: [], resistance: [] };
+  }
+
+  const params = getDynamicParams(data.length);
+  const pivots = findPivotPoints(data, params.pivotWindow);
 
   return {
-    support: groupLevels(pivots, 'support'),
-    resistance: groupLevels(pivots, 'resistance')
+    support: groupLevels(pivots, 'support', params),
+    resistance: groupLevels(pivots, 'resistance', params)
   };
 }
 
 /**
  * Finds pivot points (local highs and lows)
  * @param {Array} data - Price data array
+ * @param {number} window - Number of bars to look back/forward for pivot detection
  * @returns {Array} - Array of pivot points
  */
-function findPivotPoints(data) {
+function findPivotPoints(data, window = 2) {
   const pivots = [];
 
-  for (let i = 2; i < data.length - 2; i++) {
-    const isHigh = isLocalHigh(data, i);
-    const isLow = isLocalLow(data, i);
+  for (let i = window; i < data.length - window; i++) {
+    const isHigh = isLocalHigh(data, i, window);
+    const isLow = isLocalLow(data, i, window);
 
     if (isHigh) {
-      pivots.push({ type: 'resistance', price: data[i].high });
+      pivots.push({ type: 'resistance', price: data[i].high, index: i });
     }
     if (isLow) {
-      pivots.push({ type: 'support', price: data[i].low });
+      pivots.push({ type: 'support', price: data[i].low, index: i });
     }
   }
 
@@ -52,43 +95,51 @@ function findPivotPoints(data) {
 
 /**
  * Checks if a point is a local high
+ * @param {Array} data - Price data array
+ * @param {number} index - Current index
+ * @param {number} window - Number of bars to check on each side
  */
-function isLocalHigh(data, index) {
+function isLocalHigh(data, index, window = 2) {
   const current = data[index].high;
-  return (
-    current > data[index - 1].high &&
-    current > data[index - 2].high &&
-    current > data[index + 1].high &&
-    current > data[index + 2].high
-  );
+  for (let i = 1; i <= window; i++) {
+    if (current <= data[index - i].high || current <= data[index + i].high) {
+      return false;
+    }
+  }
+  return true;
 }
 
 /**
  * Checks if a point is a local low
+ * @param {Array} data - Price data array
+ * @param {number} index - Current index
+ * @param {number} window - Number of bars to check on each side
  */
-function isLocalLow(data, index) {
+function isLocalLow(data, index, window = 2) {
   const current = data[index].low;
-  return (
-    current < data[index - 1].low &&
-    current < data[index - 2].low &&
-    current < data[index + 1].low &&
-    current < data[index + 2].low
-  );
+  for (let i = 1; i <= window; i++) {
+    if (current >= data[index - i].low || current >= data[index + i].low) {
+      return false;
+    }
+  }
+  return true;
 }
 
 /**
  * Groups nearby price levels together
  * @param {Array} pivots - Array of pivot points
  * @param {string} type - 'support' or 'resistance'
+ * @param {Object} params - Dynamic parameters {minTouches, priceTolerance}
  * @returns {Array} - Grouped and sorted levels
  */
-function groupLevels(pivots, type) {
+function groupLevels(pivots, type, params) {
+  const { minTouches, priceTolerance } = params;
   const filtered = pivots.filter(p => p.type === type);
   const groups = [];
 
   filtered.forEach(pivot => {
     const existing = groups.find(
-      g => Math.abs(g.price - pivot.price) / g.price < PRICE_TOLERANCE
+      g => Math.abs(g.price - pivot.price) / g.price < priceTolerance
     );
 
     if (existing) {
@@ -100,7 +151,7 @@ function groupLevels(pivots, type) {
   });
 
   return groups
-    .filter(g => g.count >= MIN_TOUCHES)
+    .filter(g => g.count >= minTouches)
     .sort((a, b) => b.count - a.count)
     .slice(0, MAX_LEVELS);
 }
