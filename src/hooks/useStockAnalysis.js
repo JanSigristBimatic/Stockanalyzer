@@ -1,21 +1,15 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { fetchStockData, fetchFundamentalData, fetchCompanyInfo, searchSymbolVariants, searchSymbols } from '../services';
-import { calcSMA, calcEMA, calcRSI, calcMACD, calcBollinger, calcOBV, calcATR, calcStochastic, calcADX } from '../utils/indicators';
+import { useState, useCallback } from 'react';
+import { fetchStockData, fetchFundamentalData, fetchCompanyInfo, searchSymbolVariants } from '../services';
+import { calcSMA, calcRSI, calcMACD, calcBollinger, calcOBV, calcATR, calcStochastic, calcADX } from '../utils/indicators';
 import { calcFibonacci, calcSupportResistance, generateVerdict } from '../utils/analysis';
 
 export function useStockAnalysis() {
   const [symbol, setSymbol] = useState('');
-  const [inputValue, setInputValue] = useState('');
   const [loading, setLoading] = useState(false);
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState(null);
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [autocompleteResults, setAutocompleteResults] = useState([]);
-  const [showAutocomplete, setShowAutocomplete] = useState(false);
-  const [autocompleteLoading, setAutocompleteLoading] = useState(false);
-  const debounceRef = useRef(null);
-  const autocompleteRequestRef = useRef(0);
   const [stockData, setStockData] = useState(null);
   const [indicators, setIndicators] = useState(null);
   const [fibonacci, setFibonacci] = useState(null);
@@ -26,36 +20,6 @@ export function useStockAnalysis() {
   const [companyInfo, setCompanyInfo] = useState(null);
   const [timePeriod, setTimePeriod] = useState('6M');
   const [interval, setInterval] = useState('1d');
-
-  useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    const requestId = autocompleteRequestRef.current + 1;
-    autocompleteRequestRef.current = requestId;
-    if (!inputValue || inputValue.length < 2) {
-      setAutocompleteResults([]);
-      setShowAutocomplete(false);
-      setAutocompleteLoading(false);
-      return;
-    }
-    debounceRef.current = setTimeout(async () => {
-      setAutocompleteLoading(true);
-      try {
-        const results = await searchSymbols(inputValue);
-        if (autocompleteRequestRef.current !== requestId) return;
-        setAutocompleteResults(results);
-        setShowAutocomplete(results.length > 0);
-      } finally {
-        if (autocompleteRequestRef.current === requestId) {
-          setAutocompleteLoading(false);
-        }
-      }
-    }, 300);
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [inputValue]);
-
-  const hideAutocomplete = useCallback(() => {
-    setTimeout(() => setShowAutocomplete(false), 200);
-  }, []);
 
   const getFetchErrorMessage = useCallback((error) => {
     if (!error) return null;
@@ -205,13 +169,13 @@ export function useStockAnalysis() {
     }
   }, [analyzeWithData, showNotFoundError, getFetchErrorMessage]);
 
-  const handleSearch = useCallback(async () => {
-    if (!inputValue.trim()) return;
+  const handleSearch = useCallback(async (query) => {
+    const upperSymbol = query.trim().toUpperCase();
+    if (!upperSymbol) return;
     setSearching(true);
     setError(null);
     setSuggestions([]);
     setShowSuggestions(false);
-    const upperSymbol = inputValue.toUpperCase();
     const directResult = await fetchStockData(upperSymbol);
     if (directResult?.error && directResult.error.type !== 'symbol') {
       setSearching(false);
@@ -222,7 +186,7 @@ export function useStockAnalysis() {
       setSearching(false);
       analyzeWithData(upperSymbol, directResult);
     } else {
-      const variants = await searchSymbolVariants(inputValue);
+      const variants = await searchSymbolVariants(upperSymbol);
       setSearching(false);
       if (variants.length === 1) {
         selectSuggestion(variants[0].symbol);
@@ -231,38 +195,6 @@ export function useStockAnalysis() {
         setShowSuggestions(true);
       } else {
         showNotFoundError(upperSymbol);
-      }
-    }
-  }, [inputValue, analyzeWithData, showNotFoundError, selectSuggestion]);
-
-  const selectAutocomplete = useCallback(async (selected) => {
-    const sym = selected.symbol;
-    setInputValue(sym);
-    setShowAutocomplete(false);
-    setAutocompleteResults([]);
-    setSearching(true);
-    setError(null);
-    setSuggestions([]);
-    setShowSuggestions(false);
-    const directResult = await fetchStockData(sym);
-    if (directResult?.error && directResult.error.type !== 'symbol') {
-      setSearching(false);
-      setError(getFetchErrorMessage(directResult.error));
-      return;
-    }
-    if (directResult?.data?.length > 20) {
-      setSearching(false);
-      analyzeWithData(sym, directResult);
-    } else {
-      const variants = await searchSymbolVariants(sym);
-      setSearching(false);
-      if (variants.length === 1) {
-        selectSuggestion(variants[0].symbol);
-      } else if (variants.length > 1) {
-        setSuggestions(variants);
-        setShowSuggestions(true);
-      } else {
-        showNotFoundError(sym);
       }
     }
   }, [analyzeWithData, showNotFoundError, selectSuggestion, getFetchErrorMessage]);
@@ -308,10 +240,9 @@ export function useStockAnalysis() {
   }, [symbol, timePeriod, analyzeWithData, getFetchErrorMessage]);
 
   return {
-    symbol, inputValue, setInputValue, loading, searching, error, suggestions, showSuggestions,
-    autocompleteResults, showAutocomplete, autocompleteLoading,
+    symbol, loading, searching, error, suggestions, showSuggestions,
     stockData, indicators, fibonacci, supportResistance, verdict, dataInfo, fundamentalData, companyInfo,
     timePeriod, interval,
-    handleSearch, selectSuggestion, selectAutocomplete, hideAutocomplete, changePeriod, changeInterval
+    handleSearch, selectSuggestion, changePeriod, changeInterval
   };
 }

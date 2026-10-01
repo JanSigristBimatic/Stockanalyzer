@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Search, Activity, BarChart3, Zap, Target, Loader2, AlertCircle, Wifi,
   Shield, AlertTriangle, Globe, Clock, Building2, DollarSign, GraduationCap,
@@ -10,7 +10,7 @@ import {
 import { BIMATIC_BLUE, BIMATIC_LIGHT, INDICATOR_INFO, FUNDAMENTAL_INFO, CHART_INTERVALS, AUTO_SCAN_PERIODS, BULLISH_THRESHOLDS } from '../constants';
 
 // Hooks
-import { useStockAnalysis, useWatchlist, useAutoScan } from '../hooks';
+import { useStockAnalysis, useWatchlist, useAutoScan, useSymbolAutocomplete } from '../hooks';
 
 // UI Components
 import { SignalBadge, VerdictIcon, EducationCard, InfoTooltip } from './ui';
@@ -27,11 +27,10 @@ export default function StockAnalyzer() {
   const [expandedCards, setExpandedCards] = useState({});
 
   const {
-    symbol, inputValue, setInputValue, loading, searching, error,
+    symbol, loading, searching, error,
     suggestions, showSuggestions, stockData, indicators, fibonacci,
     supportResistance, verdict, dataInfo, fundamentalData, companyInfo,
-    timePeriod, interval, handleSearch, selectSuggestion, changePeriod, changeInterval,
-    autocompleteResults, showAutocomplete, autocompleteLoading, selectAutocomplete, hideAutocomplete
+    timePeriod, interval, handleSearch, selectSuggestion, changePeriod, changeInterval
   } = useStockAnalysis();
 
   const {
@@ -58,6 +57,11 @@ export default function StockAnalyzer() {
     setExpandedCards(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
+  const openInAnalysis = (sym) => {
+    selectSuggestion(sym);
+    setActiveTab('analyse');
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-6" style={{ fontFamily: "Roboto, system-ui, -apple-system, sans-serif" }}>
       <div className="max-w-7xl mx-auto">
@@ -66,16 +70,10 @@ export default function StockAnalyzer() {
 
         {/* Search with Autocomplete */}
         <SearchBar
-          inputValue={inputValue}
-          setInputValue={setInputValue}
+          currentSymbol={symbol}
           loading={loading}
           searching={searching}
           onSearch={handleSearch}
-          autocompleteResults={autocompleteResults}
-          showAutocomplete={showAutocomplete}
-          autocompleteLoading={autocompleteLoading}
-          onSelectAutocomplete={selectAutocomplete}
-          onBlur={hideAutocomplete}
         />
 
         {/* Exchange Suggestions */}
@@ -114,7 +112,6 @@ export default function StockAnalyzer() {
                 <VerdictCard verdict={verdict} />
                 <WatchlistButton
                   symbol={symbol}
-                  companyName={companyInfo?.name}
                   isInWatchlist={isInWatchlist(symbol)}
                   onAdd={() => addToWatchlist(symbol, companyInfo?.name)}
                   onRemove={() => removeFromWatchlist(symbol)}
@@ -175,11 +172,7 @@ export default function StockAnalyzer() {
         {activeTab === 'scanner' && (
           <AutoScanTab
             autoScan={autoScan}
-            onAnalyze={(sym) => {
-              setInputValue(sym);
-              selectSuggestion(sym);
-              setActiveTab('analyse');
-            }}
+            onAnalyze={openInAnalysis}
             addToWatchlist={addToWatchlist}
             isInWatchlist={isInWatchlist}
           />
@@ -197,11 +190,7 @@ export default function StockAnalyzer() {
             onRemove={removeFromWatchlist}
             onMoveUp={moveUp}
             onMoveDown={moveDown}
-            onAnalyze={(sym) => {
-              setInputValue(sym);
-              selectSuggestion(sym);
-              setActiveTab('analyse');
-            }}
+            onAnalyze={openInAnalysis}
             analyzing={analyzing}
             analyzeProgress={analyzeProgress}
             currentAnalyzing={currentAnalyzing}
@@ -239,10 +228,35 @@ function Header() {
   );
 }
 
-function SearchBar({
-  inputValue, setInputValue, loading, searching, onSearch,
-  autocompleteResults, showAutocomplete, autocompleteLoading, onSelectAutocomplete, onBlur
-}) {
+function SearchBar({ currentSymbol, loading, searching, onSearch }) {
+  const [inputValue, setInputValue] = useState(currentSymbol);
+  const [syncedSymbol, setSyncedSymbol] = useState(currentSymbol);
+  const autocomplete = useSymbolAutocomplete();
+
+  // Show the analyzed symbol when it was opened from the scanner or the watchlist
+  if (currentSymbol !== syncedSymbol) {
+    setSyncedSymbol(currentSymbol);
+    setInputValue(currentSymbol);
+  }
+
+  const submit = (query) => {
+    autocomplete.close();
+    onSearch(query);
+  };
+
+  const selectResult = (result) => {
+    setInputValue(result.symbol);
+    submit(result.symbol);
+  };
+
+  const handleChange = (e) => {
+    const value = e.target.value.toUpperCase();
+    setInputValue(value);
+    autocomplete.search(value);
+  };
+
+  const isDisabled = loading || searching || !inputValue.trim();
+
   return (
     <div className="flex flex-col sm:flex-row gap-3 mb-6">
       <div className="relative flex-1 max-w-lg">
@@ -250,17 +264,17 @@ function SearchBar({
         <input
           type="text"
           value={inputValue}
-          onChange={(e) => setInputValue(e.target.value.toUpperCase())}
-          onKeyDown={(e) => e.key === 'Enter' && onSearch()}
-          onBlur={onBlur}
+          onChange={handleChange}
+          onKeyDown={(e) => e.key === 'Enter' && submit(inputValue)}
+          onBlur={autocomplete.close}
           placeholder="Symbol oder Firmenname (z.B. NVDA, Apple, Tesla)"
           className="w-full bg-slate-900 border-2 border-slate-600 rounded-xl pl-12 pr-4 py-3 text-white text-lg font-medium placeholder-slate-500 focus:outline-none focus:border-blue-400 transition-colors"
         />
 
         {/* Autocomplete Dropdown */}
-        {showAutocomplete && (
+        {autocomplete.isOpen && (
           <div className="absolute top-full left-0 right-0 mt-1 bg-slate-900 border-2 border-blue-400 rounded-xl shadow-xl z-50 max-h-80 overflow-y-auto">
-            {autocompleteLoading ? (
+            {autocomplete.isLoading ? (
               <div className="flex items-center gap-2 p-4 text-slate-400">
                 <Loader2 className="w-4 h-4 animate-spin" />
                 <span>Suche...</span>
@@ -269,14 +283,14 @@ function SearchBar({
               <>
                 <div className="px-3 py-2 text-xs text-slate-500 border-b border-slate-700 flex items-center gap-1">
                   <Search className="w-3 h-3" />
-                  {autocompleteResults.length} Ergebnis{autocompleteResults.length !== 1 ? 'se' : ''} gefunden
+                  {autocomplete.results.length} Ergebnis{autocomplete.results.length !== 1 ? 'se' : ''} gefunden
                 </div>
-                {autocompleteResults.map((result, i) => (
+                {autocomplete.results.map((result, i) => (
                   <button
                     key={i}
                     onMouseDown={(e) => {
                       e.preventDefault();
-                      onSelectAutocomplete(result);
+                      selectResult(result);
                     }}
                     className="w-full flex items-center gap-3 p-3 hover:bg-slate-800 border-b border-slate-800 last:border-b-0 transition-colors text-left"
                   >
@@ -303,10 +317,10 @@ function SearchBar({
         )}
       </div>
       <button
-        onClick={onSearch}
-        disabled={loading || searching || !inputValue.trim()}
+        onClick={() => submit(inputValue)}
+        disabled={isDisabled}
         className="px-6 py-3 text-white text-lg font-bold rounded-xl flex items-center justify-center gap-2 transition-colors disabled:bg-slate-700 disabled:text-slate-500"
-        style={{ backgroundColor: (loading || searching || !inputValue.trim()) ? undefined : BIMATIC_BLUE }}
+        style={{ backgroundColor: isDisabled ? undefined : BIMATIC_BLUE }}
       >
         {(loading || searching) ? <Loader2 className="w-5 h-5 animate-spin" /> : <Zap className="w-5 h-5" />}
         {searching ? 'Suche...' : 'Analysieren'}
@@ -1759,7 +1773,7 @@ function WatchlistItem({
   );
 }
 
-function WatchlistButton({ symbol, companyName, isInWatchlist, onAdd, onRemove }) {
+function WatchlistButton({ symbol, isInWatchlist, onAdd, onRemove }) {
   if (isInWatchlist) {
     return (
       <button
