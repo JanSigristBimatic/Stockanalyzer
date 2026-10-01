@@ -1,5 +1,6 @@
 import { findNearestFibLevel } from './fibonacci';
 import { findNearbyLevel } from './supportResistance';
+import { getRecommendationLabel } from '../../constants/recommendations';
 
 /**
  * Signal weights for different indicators
@@ -34,6 +35,10 @@ const VERDICT_THRESHOLDS = {
   bearish: 1
 };
 
+const HIGH_VOLUME_RATIO = 1.5;
+const LOW_VOLUME_RATIO = 0.5;
+const VOLUME_SUB_SIGNAL_SCORE = 0.5;
+
 /**
  * Generates a trading verdict based on technical and fundamental indicators
  * @param {Object} indicators - Current indicator values
@@ -56,7 +61,7 @@ export function generateVerdict(indicators, fibonacci, supportResistance, lastPr
   const signals = [...technicalAnalysis.signals, ...fundamentalAnalysis.signals];
 
   const percentages = calculatePercentages(bullishSignals, bearishSignals, neutralSignals);
-  const verdict = determineVerdict(bullishSignals, bearishSignals, fundamentalData);
+  const verdict = determineVerdict(bullishSignals, bearishSignals, fundamentalAnalysis.signals.length > 0);
 
   return {
     ...verdict,
@@ -78,26 +83,28 @@ function analyzeIndicators(indicators, fibonacci, supportResistance, lastPrice) 
   let neutralSignals = 0;
   const signals = [];
 
-  // Trend Analysis (SMA)
+  // Trend Analysis (SMA), only once SMA 50 exists
   if (indicators.shortTrend === 'bullish') {
     bullishSignals += SIGNAL_WEIGHTS.trend;
     signals.push({ type: 'bullish', text: 'SMA 20 über SMA 50 (Aufwärtstrend)' });
-  } else {
+  } else if (indicators.shortTrend === 'bearish') {
     bearishSignals += SIGNAL_WEIGHTS.trend;
     signals.push({ type: 'bearish', text: 'SMA 20 unter SMA 50 (Abwärtstrend)' });
   }
 
   // RSI Analysis
-  const rsiSignal = analyzeRSI(indicators.lastRSI);
-  signals.push(rsiSignal.signal);
-  if (rsiSignal.type === 'bullish') bullishSignals += rsiSignal.weight;
-  else if (rsiSignal.type === 'bearish') bearishSignals += rsiSignal.weight;
+  if (indicators.lastRSI != null) {
+    const rsiSignal = analyzeRSI(indicators.lastRSI);
+    signals.push(rsiSignal.signal);
+    if (rsiSignal.type === 'bullish') bullishSignals += rsiSignal.weight;
+    else if (rsiSignal.type === 'bearish') bearishSignals += rsiSignal.weight;
+  }
 
-  // MACD Analysis
+  // MACD Analysis, only once the signal line exists
   if (indicators.macdSignal === 'bullish') {
     bullishSignals += SIGNAL_WEIGHTS.macd;
     signals.push({ type: 'bullish', text: 'MACD über Signal-Linie (Kaufsignal)' });
-  } else {
+  } else if (indicators.macdSignal === 'bearish') {
     bearishSignals += SIGNAL_WEIGHTS.macd;
     signals.push({ type: 'bearish', text: 'MACD unter Signal-Linie (Verkaufssignal)' });
   }
@@ -205,12 +212,13 @@ function analyzeFibonacci(levels, price) {
 }
 
 /**
- * Analyzes Support/Resistance proximity
+ * Analyzes Support/Resistance proximity. A support only counts below the price and a
+ * resistance only above it; broken levels on the wrong side are ignored.
  */
 function analyzeSupportResistance(sr, price) {
   const signals = [];
 
-  const nearSupport = findNearbyLevel(sr.support, price);
+  const nearSupport = findNearbyLevel(sr.support.filter(level => level.price <= price), price);
   if (nearSupport) {
     signals.push({
       type: 'bullish',
@@ -218,7 +226,7 @@ function analyzeSupportResistance(sr, price) {
     });
   }
 
-  const nearResistance = findNearbyLevel(sr.resistance, price);
+  const nearResistance = findNearbyLevel(sr.resistance.filter(level => level.price >= price), price);
   if (nearResistance) {
     signals.push({
       type: 'bearish',
@@ -231,71 +239,75 @@ function analyzeSupportResistance(sr, price) {
 
 /**
  * Analyzes Volume indicators
- * @param {Object} volumeData - Volume analysis data
- * @returns {Object} - Analysis result with type, weight and signal
+ * @param {Object} volumeData - { currentVolume, avgVolume, obvTrend: 'rising'|'falling'|'neutral', priceDirection: 'up'|'down'|'flat' }
+ * @returns {Object|null} - Analysis result with type, weight and signals
  */
 function analyzeVolume(volumeData) {
   if (!volumeData) return null;
 
-  const { currentVolume, avgVolume, obvTrend, priceDirection, volumeConfirmation } = volumeData;
+  const { currentVolume, avgVolume, obvTrend, priceDirection } = volumeData;
   const signals = [];
-  let totalBullish = 0;
-  let totalBearish = 0;
+  let score = 0;
 
-  // 1. Volume vs Average (hohes Volumen = starke Überzeugung)
-  if (currentVolume && avgVolume && avgVolume > 0) {
+  // 1. Volume vs average: high volume shows conviction in the direction of the move
+  if (currentVolume && avgVolume > 0) {
     const volumeRatio = currentVolume / avgVolume;
 
-    if (volumeRatio > 1.5) {
-      // Hohes Volumen - Richtung wichtig
-      if (priceDirection === 'up') {
-        signals.push({ type: 'bullish', text: `Volumen ${(volumeRatio * 100).toFixed(0)}% über Durchschnitt (starker Kaufdruck)` });
-        totalBullish += 0.5;
-      } else {
-        signals.push({ type: 'bearish', text: `Volumen ${(volumeRatio * 100).toFixed(0)}% über Durchschnitt (starker Verkaufsdruck)` });
-        totalBearish += 0.5;
-      }
-    } else if (volumeRatio < 0.5) {
-      // Niedriges Volumen - schwache Überzeugung
-      signals.push({ type: 'neutral', text: `Volumen ${(volumeRatio * 100).toFixed(0)}% unter Durchschnitt (schwache Bewegung)` });
+    if (volumeRatio > HIGH_VOLUME_RATIO && priceDirection !== 'flat') {
+      const isUp = priceDirection === 'up';
+      const excess = Math.round((volumeRatio - 1) * 100);
+      signals.push({
+        type: isUp ? 'bullish' : 'bearish',
+        text: `Volumen ${excess}% über Durchschnitt (starker ${isUp ? 'Kaufdruck' : 'Verkaufsdruck'})`
+      });
+      score += isUp ? VOLUME_SUB_SIGNAL_SCORE : -VOLUME_SUB_SIGNAL_SCORE;
+    } else if (volumeRatio < LOW_VOLUME_RATIO) {
+      const shortfall = Math.round((1 - volumeRatio) * 100);
+      signals.push({ type: 'neutral', text: `Volumen ${shortfall}% unter Durchschnitt (schwache Bewegung)` });
     }
   }
 
-  // 2. OBV Trend (Akkumulation vs Distribution)
-  if (obvTrend) {
-    if (obvTrend === 'rising') {
-      signals.push({ type: 'bullish', text: 'OBV steigend (Akkumulation)' });
-      totalBullish += 0.5;
-    } else if (obvTrend === 'falling') {
-      signals.push({ type: 'bearish', text: 'OBV fallend (Distribution)' });
-      totalBearish += 0.5;
+  // 2. OBV trend (accumulation vs distribution) and its relation to the price move
+  if (obvTrend === 'rising' || obvTrend === 'falling') {
+    const isRising = obvTrend === 'rising';
+    const type = isRising ? 'bullish' : 'bearish';
+    const obvScore = isRising ? VOLUME_SUB_SIGNAL_SCORE : -VOLUME_SUB_SIGNAL_SCORE;
+
+    signals.push({ type, text: isRising ? 'OBV steigend (Akkumulation)' : 'OBV fallend (Distribution)' });
+    score += obvScore;
+
+    const priceRelationText = describePriceVolumeRelation(isRising, priceDirection);
+    if (priceRelationText) {
+      signals.push({ type, text: priceRelationText });
+      score += obvScore;
     }
   }
 
-  // 3. Preis-Volumen Bestätigung/Divergenz
-  if (volumeConfirmation !== undefined) {
-    if (volumeConfirmation) {
-      signals.push({ type: 'bullish', text: 'Volumen bestätigt Preistrend' });
-      totalBullish += 0.5;
-    } else {
-      signals.push({ type: 'bearish', text: 'Volumen-Preis-Divergenz (Vorsicht!)' });
-      totalBearish += 0.5;
-    }
-  }
-
-  // Falls keine Signale gefunden wurden
   if (signals.length === 0) return null;
 
-  // Bestimme Gesamttyp
   let type = 'neutral';
-  if (totalBullish > totalBearish) type = 'bullish';
-  else if (totalBearish > totalBullish) type = 'bearish';
+  if (score > 0) type = 'bullish';
+  else if (score < 0) type = 'bearish';
 
   return {
     type,
     weight: SIGNAL_WEIGHTS.volume,
     signals
   };
+}
+
+/**
+ * Describes whether volume confirms the price move. The directional meaning always
+ * follows the OBV: rising OBV confirms a rally or shows accumulation into a decline.
+ */
+function describePriceVolumeRelation(isObvRising, priceDirection) {
+  if (priceDirection === 'up') {
+    return isObvRising ? 'Volumen bestätigt Aufwärtsbewegung' : 'Volumen-Preis-Divergenz: Anstieg ohne Kaufvolumen';
+  }
+  if (priceDirection === 'down') {
+    return isObvRising ? 'Volumen-Preis-Divergenz: Akkumulation trotz Rückgang' : 'Volumen bestätigt Abwärtsbewegung';
+  }
+  return null;
 }
 
 /**
@@ -571,8 +583,8 @@ function analyzeGrowth(earningsGrowth, revenueGrowth) {
   // Need at least one growth metric
   if (earningsGrowth == null && revenueGrowth == null) return null;
 
-  const eg = earningsGrowth ? earningsGrowth * 100 : null;
-  const rg = revenueGrowth ? revenueGrowth * 100 : null;
+  const eg = earningsGrowth != null ? earningsGrowth * 100 : null;
+  const rg = revenueGrowth != null ? revenueGrowth * 100 : null;
 
   // Use the better available metric
   const primaryGrowth = eg ?? rg;
@@ -644,7 +656,7 @@ function analyzeProfitMargin(margin) {
  */
 function analyzeTargetPrice(currentPrice, targetPrice, recommendation) {
   const upside = ((targetPrice - currentPrice) / currentPrice) * 100;
-  const recText = getRecommendationText(recommendation);
+  const recText = getRecommendationLabel(recommendation);
 
   if (upside > 20) {
     return {
@@ -671,24 +683,11 @@ function analyzeTargetPrice(currentPrice, targetPrice, recommendation) {
 }
 
 /**
- * Translates Yahoo Finance recommendation keys to German
- */
-function getRecommendationText(key) {
-  const recommendations = {
-    'strongBuy': 'Stark Kaufen',
-    'buy': 'Kaufen',
-    'hold': 'Halten',
-    'sell': 'Verkaufen',
-    'strongSell': 'Stark Verkaufen'
-  };
-  return recommendations[key] || key || 'Keine Empfehlung';
-}
-
-/**
  * Calculates bullish/bearish percentages
  */
 function calculatePercentages(bullish, bearish, neutral) {
   const total = bullish + bearish + neutral;
+  if (total === 0) return { bullishPercent: 0, bearishPercent: 0 };
   return {
     bullishPercent: Math.round((bullish / total) * 100),
     bearishPercent: Math.round((bearish / total) * 100)
@@ -699,14 +698,12 @@ function calculatePercentages(bullish, bearish, neutral) {
  * Determines the final verdict based on signal counts
  * @param {number} bullish - Total bullish signal score
  * @param {number} bearish - Total bearish signal score
- * @param {Object} fundamentalData - Fundamental data for enhanced recommendations
+ * @param {boolean} hasFundamentals - Whether fundamental signals contributed to the scores
  */
-function determineVerdict(bullish, bearish, fundamentalData = null) {
+function determineVerdict(bullish, bearish, hasFundamentals) {
   const diff = bullish - bearish;
-  const hasFundamentals = fundamentalData != null;
 
-  // Adjust thresholds based on whether we have fundamental data
-  // With fundamentals, we have more signals so need higher thresholds
+  // With fundamental signals the scores are larger, so the thresholds rise as well
   const thresholdMultiplier = hasFundamentals ? 1.5 : 1;
   const strongThreshold = VERDICT_THRESHOLDS.strongBullish * thresholdMultiplier;
   const normalThreshold = VERDICT_THRESHOLDS.bullish * thresholdMultiplier;

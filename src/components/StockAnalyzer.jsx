@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 
 // Constants
-import { BIMATIC_BLUE, BIMATIC_LIGHT, INDICATOR_INFO, FUNDAMENTAL_INFO, CHART_INTERVALS, AUTO_SCAN_PERIODS, BULLISH_THRESHOLDS } from '../constants';
+import { BIMATIC_BLUE, BIMATIC_LIGHT, INDICATOR_INFO, FUNDAMENTAL_INFO, CHART_INTERVALS, AUTO_SCAN_PERIODS, BULLISH_THRESHOLDS, getRecommendationLabel } from '../constants';
 
 // Hooks
 import { useStockAnalysis, useWatchlist, useAutoScan, useSymbolAutocomplete } from '../hooks';
@@ -809,20 +809,6 @@ function FundamentalDataCard({ data }) {
       </div>
     </div>
   );
-}
-
-function getRecommendationLabel(key) {
-  const labels = {
-    strongBuy: 'Stark Kaufen',
-    strong_buy: 'Stark Kaufen',
-    buy: 'Kaufen',
-    hold: 'Halten',
-    underperform: 'Untergewichten',
-    sell: 'Verkaufen',
-    strongSell: 'Stark Verkaufen',
-    strong_sell: 'Stark Verkaufen'
-  };
-  return labels[key] || key;
 }
 
 function MetricCard({ label, value, subValue, highlight }) {
