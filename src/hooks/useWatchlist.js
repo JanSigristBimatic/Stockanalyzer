@@ -1,14 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchStockData, fetchQuoteSummary, analyzeSymbol } from '../services';
 import { toAnalysisSummary } from '../utils/analysis';
+import { mapWithConcurrency } from '../utils/async';
 
 const WATCHLIST_KEY = 'stockanalyzer_watchlist';
 const ANALYZE_ALL_PERIOD = '6M';
-
-async function analyzeSummary(symbol) {
-  const response = await analyzeSymbol(symbol, ANALYZE_ALL_PERIOD, '1d');
-  return response.error ? null : toAnalysisSummary(symbol, response.analysis, response.meta);
-}
+const MAX_PARALLEL_REQUESTS = 4;
+const QUOTES_MAX_AGE_MS = 5 * 60 * 1000;
+const WEEK_BARS = 5;
 
 function loadStoredWatchlist() {
   try {
@@ -21,21 +20,51 @@ function loadStoredWatchlist() {
 }
 
 /**
- * Custom hook for managing a stock watchlist with localStorage persistence
- * Stores symbols and fetches live price data on demand
+ * Loads price, daily and weekly change and market cap for one symbol
+ * @returns {Promise<Object|null>} - null if the chart could not be loaded
+ */
+async function loadQuote(symbol) {
+  const [chart, quoteSummary] = await Promise.all([
+    fetchStockData(symbol, '1M', '1d'),
+    fetchQuoteSummary(symbol)
+  ]);
+  if (chart.error) return null;
+
+  const closes = chart.data.map(bar => bar.close);
+  const lastPrice = closes[closes.length - 1];
+  const weekAgoPrice = closes[Math.max(0, closes.length - 1 - WEEK_BARS)];
+
+  return {
+    price: lastPrice,
+    change: quoteSummary?.dailyChangePercent ?? null,
+    weekChange: ((lastPrice - weekAgoPrice) / weekAgoPrice) * 100,
+    currency: chart.currency,
+    priceHint: chart.priceHint,
+    marketCap: quoteSummary?.fundamentals.marketCap ?? null
+  };
+}
+
+async function analyzeSummary(symbol) {
+  const response = await analyzeSymbol(symbol, ANALYZE_ALL_PERIOD, '1d');
+  return response.error ? null : toAnalysisSummary(symbol, response.analysis, response.meta);
+}
+
+/**
+ * Custom hook for managing a stock watchlist with localStorage persistence.
+ * Quotes are loaded on demand with limited parallelism; a symbol is never loaded twice at once.
  */
 export function useWatchlist() {
   const [watchlist, setWatchlist] = useState(loadStoredWatchlist);
-  const [watchlistData, setWatchlistData] = useState({});
+  const [quotes, setQuotes] = useState({});
   const [loadingSymbols, setLoadingSymbols] = useState({});
+  const [failedSymbols, setFailedSymbols] = useState({});
   const [lastRefresh, setLastRefresh] = useState(null);
+  const inFlightRef = useRef(new Set());
 
-  // Analyze all states
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeProgress, setAnalyzeProgress] = useState(0);
-  const [currentAnalyzing, setCurrentAnalyzing] = useState('');
   const [analysisResults, setAnalysisResults] = useState({});
-  const abortAnalyzeRef = useRef(false);
+  const analyzeRunRef = useRef(0);
 
   // Save watchlist to localStorage whenever it changes
   useEffect(() => {
@@ -55,28 +84,26 @@ export function useWatchlist() {
     const upperSymbol = symbol.toUpperCase();
     setWatchlist(prev => {
       if (prev.some(item => item.symbol === upperSymbol)) {
-        return prev; // Already exists
+        return prev;
       }
-      return [...prev, {
-        symbol: upperSymbol,
-        name,
-        addedAt: new Date().toISOString()
-      }];
+      return [...prev, { symbol: upperSymbol, name, addedAt: new Date().toISOString() }];
     });
   }, []);
 
   /**
-   * Removes a symbol from the watchlist
+   * Removes a symbol and its quote from the watchlist
    * @param {string} symbol - Stock symbol to remove
    */
   const removeFromWatchlist = useCallback((symbol) => {
     const upperSymbol = symbol.toUpperCase();
+    const withoutSymbol = (prev) => {
+      const next = { ...prev };
+      delete next[upperSymbol];
+      return next;
+    };
     setWatchlist(prev => prev.filter(item => item.symbol !== upperSymbol));
-    setWatchlistData(prev => {
-      const newData = { ...prev };
-      delete newData[upperSymbol];
-      return newData;
-    });
+    setQuotes(withoutSymbol);
+    setFailedSymbols(withoutSymbol);
   }, []);
 
   /**
@@ -89,62 +116,47 @@ export function useWatchlist() {
   }, [watchlist]);
 
   /**
-   * Fetches current price data for a single symbol
+   * Loads the quote of one symbol; a failed load keeps the previous quote and flags the symbol
    * @param {string} symbol - Stock symbol
    */
-  const fetchSymbolData = useCallback(async (symbol) => {
+  const refreshSymbol = useCallback(async (symbol) => {
+    if (inFlightRef.current.has(symbol)) return;
+    inFlightRef.current.add(symbol);
     setLoadingSymbols(prev => ({ ...prev, [symbol]: true }));
 
-    try {
-      const [priceResult, quoteSummary] = await Promise.all([
-        fetchStockData(symbol, '1M', '1d'),
-        fetchQuoteSummary(symbol)
-      ]);
-      const fundamentals = quoteSummary?.fundamentals;
-
-      if (priceResult?.data?.length > 0) {
-        const data = priceResult.data;
-        const lastPrice = data[data.length - 1].close;
-        const prevPrice = data[data.length - 2]?.close || lastPrice;
-        const change = ((lastPrice - prevPrice) / prevPrice * 100);
-
-        // Calculate 1-week change if we have enough data
-        const weekAgoIndex = Math.max(0, data.length - 6);
-        const weekAgoPrice = data[weekAgoIndex].close;
-        const weekChange = ((lastPrice - weekAgoPrice) / weekAgoPrice * 100);
-
-        setWatchlistData(prev => ({
-          ...prev,
-          [symbol]: {
-            price: lastPrice,
-            change: change.toFixed(2),
-            weekChange: weekChange.toFixed(2),
-            currency: priceResult.currency,
-            priceHint: priceResult.priceHint,
-            exchange: priceResult.exchange,
-            marketCap: fundamentals?.marketCap,
-            peRatio: fundamentals?.peRatio,
-            week52High: fundamentals?.week52High,
-            week52Low: fundamentals?.week52Low,
-            updatedAt: new Date().toISOString()
-          }
-        }));
-      }
-    } catch (e) {
-      console.error(`Failed to fetch data for ${symbol}:`, e);
-    } finally {
-      setLoadingSymbols(prev => ({ ...prev, [symbol]: false }));
+    const quote = await loadQuote(symbol);
+    if (quote) {
+      setQuotes(prev => ({ ...prev, [symbol]: quote }));
     }
+    setFailedSymbols(prev => ({ ...prev, [symbol]: !quote }));
+    setLoadingSymbols(prev => ({ ...prev, [symbol]: false }));
+    inFlightRef.current.delete(symbol);
   }, []);
 
+  const refreshSymbols = useCallback(
+    (items) => mapWithConcurrency(items, MAX_PARALLEL_REQUESTS, item => refreshSymbol(item.symbol)),
+    [refreshSymbol]
+  );
+
   /**
-   * Refreshes data for all symbols in watchlist
+   * Refreshes the quotes of all symbols in the watchlist
    */
   const refreshAll = useCallback(async () => {
-    const promises = watchlist.map(item => fetchSymbolData(item.symbol));
-    await Promise.all(promises);
-    setLastRefresh(new Date().toISOString());
-  }, [watchlist, fetchSymbolData]);
+    await refreshSymbols(watchlist);
+    setLastRefresh(Date.now());
+  }, [watchlist, refreshSymbols]);
+
+  /**
+   * Called when the watchlist opens: reloads everything once the quotes are older than five
+   * minutes, otherwise only symbols that have never been loaded
+   */
+  const refreshIfStale = useCallback(() => {
+    if (!lastRefresh || Date.now() - lastRefresh > QUOTES_MAX_AGE_MS) {
+      refreshAll();
+      return;
+    }
+    refreshSymbols(watchlist.filter(item => !quotes[item.symbol] && !failedSymbols[item.symbol]));
+  }, [lastRefresh, watchlist, quotes, failedSymbols, refreshAll, refreshSymbols]);
 
   /**
    * Moves an item up in the watchlist
@@ -173,61 +185,46 @@ export function useWatchlist() {
   }, []);
 
   /**
-   * Clears entire watchlist
-   */
-  const clearWatchlist = useCallback(() => {
-    setWatchlist([]);
-    setWatchlistData({});
-  }, []);
-
-  /**
-   * Analyzes all symbols in the watchlist
+   * Runs the full analysis for all symbols; stopping discards the remaining results
    */
   const analyzeAll = useCallback(async () => {
     if (watchlist.length === 0) return;
 
+    const runId = ++analyzeRunRef.current;
+    const isCurrentRun = () => runId === analyzeRunRef.current;
+    let completed = 0;
+
     setAnalyzing(true);
     setAnalyzeProgress(0);
     setAnalysisResults({});
-    abortAnalyzeRef.current = false;
 
-    const results = {};
-
-    for (let i = 0; i < watchlist.length; i++) {
-      if (abortAnalyzeRef.current) {
-        setAnalyzing(false);
-        return;
-      }
-
-      const item = watchlist[i];
-      setCurrentAnalyzing(item.symbol);
-      setAnalyzeProgress(Math.round(((i + 1) / watchlist.length) * 100));
-
+    await mapWithConcurrency(watchlist, MAX_PARALLEL_REQUESTS, async (item) => {
+      if (!isCurrentRun()) return;
       const result = await analyzeSummary(item.symbol);
+      if (!isCurrentRun()) return;
+
+      completed += 1;
+      setAnalyzeProgress(Math.round((completed / watchlist.length) * 100));
       if (result) {
-        results[item.symbol] = result;
         setAnalysisResults(prev => ({ ...prev, [item.symbol]: result }));
       }
+    });
 
-      // Small delay to avoid rate limiting
-      if (i < watchlist.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 400));
-      }
+    if (isCurrentRun()) {
+      setAnalyzing(false);
     }
-
-    setAnalyzing(false);
-    setCurrentAnalyzing('');
   }, [watchlist]);
 
   /**
-   * Stop ongoing analysis
+   * Stops an ongoing analysis
    */
   const stopAnalyzeAll = useCallback(() => {
-    abortAnalyzeRef.current = true;
+    analyzeRunRef.current += 1;
+    setAnalyzing(false);
   }, []);
 
   /**
-   * Clear analysis results
+   * Clears the analysis results
    */
   const clearAnalysisResults = useCallback(() => {
     setAnalysisResults({});
@@ -236,21 +233,20 @@ export function useWatchlist() {
 
   return {
     watchlist,
-    watchlistData,
+    quotes,
     loadingSymbols,
+    failedSymbols,
     lastRefresh,
     addToWatchlist,
     removeFromWatchlist,
     isInWatchlist,
-    fetchSymbolData,
+    refreshSymbol,
     refreshAll,
+    refreshIfStale,
     moveUp,
     moveDown,
-    clearWatchlist,
-    // Analyze all
     analyzing,
     analyzeProgress,
-    currentAnalyzing,
     analysisResults,
     analyzeAll,
     stopAnalyzeAll,

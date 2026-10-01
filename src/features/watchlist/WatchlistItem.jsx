@@ -1,13 +1,11 @@
-import { Loader2, TrendingUp, TrendingDown, RefreshCw, Trash2, ChevronUp, ChevronDown, Eye } from 'lucide-react';
+import { Loader2, RefreshCw, Trash2, ChevronUp, ChevronDown, Eye, AlertCircle } from 'lucide-react';
+import { PriceChange } from '../../components/ui';
 import { formatPrice, formatCompactCurrency } from '../../utils/format';
 
 export function WatchlistItem({
-  item, data, isLoading, isFirst, isLast,
+  item, data, isLoading, hasError, isFirst, isLast,
   onRefresh, onRemove, onMoveUp, onMoveDown, onAnalyze
 }) {
-  const changeColor = data?.change >= 0 ? 'text-green-400' : 'text-red-400';
-  const weekChangeColor = data?.weekChange >= 0 ? 'text-green-400' : 'text-red-400';
-
   return (
     <div className="bg-slate-900 border-2 border-slate-700 hover:border-slate-600 rounded-xl p-4 transition-colors">
       <div className="flex flex-col sm:flex-row sm:items-center gap-4">
@@ -16,6 +14,12 @@ export function WatchlistItem({
           <div className="flex items-center gap-2">
             <span className="text-white font-bold text-lg">{item.symbol}</span>
             {isLoading && <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />}
+            {hasError && !isLoading && (
+              <span className="flex items-center gap-1 text-xs font-semibold text-red-400" title="Kurse konnten nicht geladen werden">
+                <AlertCircle className="w-3 h-3" />
+                Fehler beim Laden
+              </span>
+            )}
           </div>
           {item.name && (
             <p className="text-slate-400 text-sm truncate">{item.name}</p>
@@ -29,20 +33,19 @@ export function WatchlistItem({
               <div className="text-white font-bold text-xl">
                 {formatPrice(data.price, data.currency, data.priceHint)}
               </div>
-              <div className={`text-sm font-semibold flex items-center justify-end gap-1 ${changeColor}`}>
-                {data.change >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                {data.change >= 0 ? '+' : ''}{data.change}%
+              <div className="text-sm font-semibold">
+                <PriceChange value={data.change} withIcon />
               </div>
             </div>
 
             <div className="text-right hidden md:block">
               <div className="text-slate-400 text-xs">7 Tage</div>
-              <div className={`text-sm font-semibold ${weekChangeColor}`}>
-                {data.weekChange >= 0 ? '+' : ''}{data.weekChange}%
+              <div className="text-sm font-semibold">
+                <PriceChange value={data.weekChange} />
               </div>
             </div>
 
-            {data.marketCap && (
+            {data.marketCap != null && (
               <div className="text-right hidden lg:block">
                 <div className="text-slate-400 text-xs">Market Cap</div>
                 <div className="text-white text-sm font-semibold">
@@ -53,7 +56,7 @@ export function WatchlistItem({
           </div>
         ) : (
           <div className="text-slate-500 text-sm">
-            {isLoading ? 'Lädt...' : 'Keine Daten'}
+            {isLoading ? 'Lädt...' : hasError ? 'Nicht verfügbar' : 'Keine Daten'}
           </div>
         )}
 
@@ -70,7 +73,7 @@ export function WatchlistItem({
             onClick={onRefresh}
             disabled={isLoading}
             className="p-2 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 text-white rounded-lg transition-colors"
-            title="Aktualisieren"
+            title={hasError ? 'Erneut versuchen' : 'Aktualisieren'}
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
           </button>

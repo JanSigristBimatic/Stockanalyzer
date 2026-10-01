@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useStockAnalysis, useWatchlist, useAutoScan } from './hooks';
 import { Header } from './components/layout/Header';
 import { TabNavigation } from './components/layout/TabNavigation';
@@ -31,24 +31,19 @@ export default function App() {
   } = useStockAnalysis();
 
   const {
-    watchlist, watchlistData, loadingSymbols, lastRefresh,
+    watchlist, quotes, loadingSymbols, failedSymbols, lastRefresh,
     addToWatchlist, removeFromWatchlist, isInWatchlist,
-    fetchSymbolData, refreshAll, moveUp, moveDown,
-    analyzing, analyzeProgress, currentAnalyzing, analysisResults,
+    refreshSymbol, refreshAll, refreshIfStale, moveUp, moveDown,
+    analyzing, analyzeProgress, analysisResults,
     analyzeAll, stopAnalyzeAll, clearAnalysisResults
   } = useWatchlist();
 
   const autoScan = useAutoScan();
 
-  // Auto-refresh watchlist data when switching to watchlist tab
-  useEffect(() => {
-    if (activeTab === 'watchlist' && watchlist.length > 0) {
-      const needsRefresh = watchlist.some(item => !watchlistData[item.symbol]);
-      if (needsRefresh) {
-        refreshAll();
-      }
-    }
-  }, [activeTab, watchlist, watchlistData, refreshAll]);
+  const changeTab = (tab) => {
+    setActiveTab(tab);
+    if (tab === 'watchlist') refreshIfStale();
+  };
 
   const toggleCard = (key) => {
     setExpandedCards(prev => ({ ...prev, [key]: !prev[key] }));
@@ -73,7 +68,7 @@ export default function App() {
           <ExchangeSuggestions suggestions={suggestions} onSelect={selectSymbol} />
         )}
 
-        <TabNavigation activeTab={activeTab} setActiveTab={setActiveTab} watchlistCount={watchlist.length} />
+        <TabNavigation activeTab={activeTab} setActiveTab={changeTab} watchlistCount={watchlist.length} />
 
         {result && isDataTab && <DataSourceBadge meta={result.meta} />}
 
@@ -138,18 +133,18 @@ export default function App() {
         {activeTab === 'watchlist' && (
           <WatchlistTab
             watchlist={watchlist}
-            watchlistData={watchlistData}
+            quotes={quotes}
             loadingSymbols={loadingSymbols}
+            failedSymbols={failedSymbols}
             lastRefresh={lastRefresh}
             onRefreshAll={refreshAll}
-            onRefreshSymbol={fetchSymbolData}
+            onRefreshSymbol={refreshSymbol}
             onRemove={removeFromWatchlist}
             onMoveUp={moveUp}
             onMoveDown={moveDown}
             onAnalyze={openInAnalysis}
             analyzing={analyzing}
             analyzeProgress={analyzeProgress}
-            currentAnalyzing={currentAnalyzing}
             analysisResults={analysisResults}
             onAnalyzeAll={analyzeAll}
             onStopAnalyzeAll={stopAnalyzeAll}

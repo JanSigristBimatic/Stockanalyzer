@@ -4,9 +4,9 @@ import { WatchlistItem } from './WatchlistItem';
 import { AnalysisResults } from './AnalysisResults';
 
 export function WatchlistTab({
-  watchlist, watchlistData, loadingSymbols, lastRefresh,
+  watchlist, quotes, loadingSymbols, failedSymbols, lastRefresh,
   onRefreshAll, onRefreshSymbol, onRemove, onMoveUp, onMoveDown, onAnalyze,
-  analyzing, analyzeProgress, currentAnalyzing, analysisResults,
+  analyzing, analyzeProgress, analysisResults,
   onAnalyzeAll, onStopAnalyzeAll, onClearAnalysisResults
 }) {
   const isAnyLoading = Object.values(loadingSymbols).some(Boolean);
@@ -39,7 +39,7 @@ export function WatchlistTab({
           <div className="flex items-center gap-2 flex-wrap">
             {lastRefresh && (
               <span className="text-slate-500 text-xs">
-                Aktualisiert: {new Date(lastRefresh).toLocaleTimeString('de-DE')}
+                Aktualisiert: {new Date(lastRefresh).toLocaleTimeString('de-CH')}
               </span>
             )}
             <button
@@ -78,7 +78,7 @@ export function WatchlistTab({
             <div className="flex justify-between text-sm mb-2">
               <span className="text-slate-400 flex items-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Analysiere: <span className="text-white font-bold">{currentAnalyzing}</span>
+                Analysiere Watchlist (Basis 6 Monate)
               </span>
               <span className="text-slate-400">{analyzeProgress}%</span>
             </div>
@@ -103,9 +103,9 @@ export function WatchlistTab({
           <WatchlistItem
             key={item.symbol}
             item={item}
-            data={watchlistData[item.symbol]}
+            data={quotes[item.symbol]}
             isLoading={loadingSymbols[item.symbol]}
-            index={index}
+            hasError={failedSymbols[item.symbol]}
             isFirst={index === 0}
             isLast={index === watchlist.length - 1}
             onRefresh={() => onRefreshSymbol(item.symbol)}
