@@ -3,7 +3,7 @@ export {
   searchSymbolVariants,
   searchSymbols,
   fetchStockData,
-  fetchFundamentalData,
-  fetchCompanyInfo,
-  getTimePeriod
+  fetchQuoteSummary,
+  getTimePeriod,
+  isMarketOpen
 } from './yahooFinance';

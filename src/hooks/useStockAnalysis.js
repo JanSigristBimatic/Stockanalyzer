@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
-import { fetchStockData, fetchFundamentalData, fetchCompanyInfo, searchSymbolVariants } from '../services';
+import { fetchStockData, fetchQuoteSummary, searchSymbolVariants } from '../services';
+import { PERIOD_INTERVALS } from '../constants';
 import { calcSMA, calcRSI, calcMACD, calcBollinger, calcOBV, calcATR, calcStochastic, calcADX } from '../utils/indicators';
 import { calcFibonacci, calcSupportResistance, generateVerdict } from '../utils/analysis';
 
@@ -127,12 +128,10 @@ export function useStockAnalysis() {
   const analyzeWithData = useCallback(async (sym, result) => {
     setSymbol(sym);
     setDataInfo({ currency: result.currency, exchange: result.exchange });
-    const [fundamentals, company] = await Promise.all([
-      fetchFundamentalData(sym),
-      fetchCompanyInfo(sym)
-    ]);
+    const quoteSummary = await fetchQuoteSummary(sym);
+    const fundamentals = quoteSummary?.fundamentals ?? null;
     setFundamentalData(fundamentals);
-    setCompanyInfo(company);
+    setCompanyInfo(quoteSummary?.company ?? null);
     processData(result.data, fundamentals, result.prefetchCount || 0);
   }, [processData]);
 
@@ -201,11 +200,8 @@ export function useStockAnalysis() {
 
   const changePeriod = useCallback(async (newPeriod) => {
     setTimePeriod(newPeriod);
-    // Yahoo API limitiert historische Daten basierend auf Intervall:
-    // - 15m/1h: nur ~60-730 Tage verfügbar
-    // - 1d: bis zu 10+ Jahre verfügbar
-    // Daher: Bei längeren Zeiträumen (3M+) immer auf 1d wechseln
-    const newInterval = newPeriod === '1M' ? interval : '1d';
+    const allowedIntervals = PERIOD_INTERVALS[newPeriod];
+    const newInterval = allowedIntervals.includes(interval) ? interval : allowedIntervals[0];
     if (newInterval !== interval) setInterval(newInterval);
     if (!symbol) return;
     setLoading(true);

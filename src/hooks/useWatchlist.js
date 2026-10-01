@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { fetchStockData, fetchFundamentalData } from '../services';
+import { fetchStockData, fetchQuoteSummary } from '../services';
 import { calcSMA, calcRSI, calcMACD, calcBollinger, calcATR, calcStochastic, calcADX } from '../utils/indicators';
 import { calcFibonacci, calcSupportResistance, generateVerdict } from '../utils/analysis';
 
@@ -91,10 +91,11 @@ export function useWatchlist() {
     setLoadingSymbols(prev => ({ ...prev, [symbol]: true }));
 
     try {
-      const [priceResult, fundamentals] = await Promise.all([
+      const [priceResult, quoteSummary] = await Promise.all([
         fetchStockData(symbol, '1M', '1d'),
-        fetchFundamentalData(symbol)
+        fetchQuoteSummary(symbol)
       ]);
+      const fundamentals = quoteSummary?.fundamentals;
 
       if (priceResult?.data?.length > 0) {
         const data = priceResult.data;
@@ -227,7 +228,7 @@ export function useWatchlist() {
         return null;
       }
 
-      const fundamentals = await fetchFundamentalData(symbol);
+      const fundamentals = (await fetchQuoteSummary(symbol))?.fundamentals ?? null;
       const analysis = processStockData(result.data, fundamentals);
 
       return {

@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { fetchStockData, fetchFundamentalData } from '../services';
+import { fetchStockData, fetchQuoteSummary } from '../services';
 import { calcSMA, calcRSI, calcMACD, calcBollinger, calcATR, calcStochastic, calcADX } from '../utils/indicators';
 import { calcFibonacci, calcSupportResistance, generateVerdict } from '../utils/analysis';
 import { SCAN_CATEGORIES, getSymbolsFromCategories, getAllSymbols } from '../constants/autoScan';
@@ -79,7 +79,7 @@ export function useAutoScan() {
         return null;
       }
 
-      const fundamentals = await fetchFundamentalData(symbol);
+      const fundamentals = (await fetchQuoteSummary(symbol))?.fundamentals ?? null;
       const analysis = processStockData(result.data, fundamentals);
 
       return {

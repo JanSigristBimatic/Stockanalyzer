@@ -35,7 +35,21 @@ export const TIME_PERIODS = {
  * Available chart intervals
  */
 export const CHART_INTERVALS = [
+  { value: '1wk', label: 'Woche' },
   { value: '1d', label: 'Tag' },
   { value: '1h', label: '1h' },
   { value: '15m', label: '15m' },
 ];
+
+/**
+ * Intervals Yahoo serves for each period (15m data only covers the last 60 days).
+ * The first entry is the default when the period changes.
+ */
+export const PERIOD_INTERVALS = {
+  '1M': ['1d', '1h', '15m'],
+  '3M': ['1d', '1h'],
+  '6M': ['1d'],
+  '1Y': ['1d'],
+  '2Y': ['1d'],
+  '5Y': ['1wk'],
+};
