@@ -5,12 +5,22 @@ import { calcFibonacci, calcSupportResistance, generateVerdict } from '../utils/
 
 const WATCHLIST_KEY = 'stockanalyzer_watchlist';
 
+function loadStoredWatchlist() {
+  try {
+    const stored = localStorage.getItem(WATCHLIST_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch (e) {
+    console.error('Failed to load watchlist:', e);
+    return [];
+  }
+}
+
 /**
  * Custom hook for managing a stock watchlist with localStorage persistence
  * Stores symbols and fetches live price data on demand
  */
 export function useWatchlist() {
-  const [watchlist, setWatchlist] = useState([]);
+  const [watchlist, setWatchlist] = useState(loadStoredWatchlist);
   const [watchlistData, setWatchlistData] = useState({});
   const [loadingSymbols, setLoadingSymbols] = useState({});
   const [lastRefresh, setLastRefresh] = useState(null);
@@ -21,19 +31,6 @@ export function useWatchlist() {
   const [currentAnalyzing, setCurrentAnalyzing] = useState('');
   const [analysisResults, setAnalysisResults] = useState({});
   const abortAnalyzeRef = useRef(false);
-
-  // Load watchlist from localStorage on mount
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(WATCHLIST_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        setWatchlist(parsed);
-      }
-    } catch (e) {
-      console.error('Failed to load watchlist:', e);
-    }
-  }, []);
 
   // Save watchlist to localStorage whenever it changes
   useEffect(() => {
