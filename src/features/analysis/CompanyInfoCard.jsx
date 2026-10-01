@@ -13,7 +13,7 @@ export function CompanyInfoCard({ info }) {
         <div className="flex flex-wrap gap-4 text-sm">
           {info.sector && <InfoItem label="Sektor" value={info.sector} />}
           {info.industry && <InfoItem label="Branche" value={info.industry} />}
-          {info.employees && <InfoItem label="Mitarbeiter" value={info.employees.toLocaleString('de-DE')} />}
+          {info.employees && <InfoItem label="Mitarbeiter" value={info.employees.toLocaleString('de-CH')} />}
         </div>
         {info.city && info.country && (
           <div className="mt-2 text-sm text-slate-400">{info.city}, {info.country}</div>

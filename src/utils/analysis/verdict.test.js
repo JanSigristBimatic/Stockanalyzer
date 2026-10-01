@@ -17,13 +17,13 @@ const BASE_INDICATORS = {
 };
 
 function verdictFor(indicatorOverrides = {}, { supportResistance = NO_LEVELS, fundamentals = null } = {}) {
-  return generateVerdict(
-    { ...BASE_INDICATORS, ...indicatorOverrides },
-    NEUTRAL_FIBONACCI,
+  return generateVerdict({
+    indicators: { ...BASE_INDICATORS, ...indicatorOverrides },
+    fibonacci: NEUTRAL_FIBONACCI,
     supportResistance,
-    PRICE,
-    fundamentals
-  );
+    fundamentals,
+    currency: 'CHF'
+  });
 }
 
 const signalTexts = (verdict) => verdict.signals.map(s => s.text);
@@ -45,6 +45,13 @@ describe('generateVerdict: technical signals', () => {
 
     expect(signalTexts(above).some(t => t.startsWith('Nahe Unterstützung'))).toBe(false);
     expect(signalTexts(below).some(t => t.startsWith('Nahe Unterstützung'))).toBe(true);
+  });
+
+  it('names price levels in the quote currency', () => {
+    const verdict = verdictFor({}, { supportResistance: { support: [{ price: 98.5 }], resistance: [] } });
+    const supportText = signalTexts(verdict).find(t => t.startsWith('Nahe Unterstützung'));
+
+    expect(supportText.replace(/\u00a0/g, ' ')).toBe('Nahe Unterstützung bei CHF 98.50');
   });
 
   it('counts a resistance level only above the price', () => {

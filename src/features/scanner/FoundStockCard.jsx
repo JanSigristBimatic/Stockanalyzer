@@ -1,6 +1,7 @@
 import { CheckCircle2, Eye, Star } from 'lucide-react';
 import { PriceChange } from '../../components/ui';
 import { BIMATIC_BLUE } from '../../constants';
+import { formatPrice } from '../../utils/format';
 
 /**
  * Highlights the stock that reached the bullish threshold
@@ -24,8 +25,7 @@ export function FoundStockCard({ stock, threshold, onAnalyze, addToWatchlist, is
           </div>
           <div className="text-right">
             <div className="text-2xl font-bold text-white">
-              {stock.currency === 'USD' ? '$' : stock.currency === 'EUR' ? '€' : stock.currency + ' '}
-              {stock.price?.toFixed(2)}
+              {formatPrice(stock.price, stock.currency, stock.priceHint)}
             </div>
             <div className="text-lg font-bold">
               <PriceChange value={stock.priceChange} withIcon />

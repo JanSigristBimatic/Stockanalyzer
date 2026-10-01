@@ -1,16 +1,17 @@
 import { SignalBadge, InfoTooltip, PriceChange } from '../../components/ui';
 import { INDICATOR_INFO } from '../../constants';
+import { formatPrice } from '../../utils/format';
 
 const NOT_ENOUGH_DATA = 'Zu wenig Daten';
 
-export function SummaryCards({ symbol, indicators }) {
+export function SummaryCards({ symbol, indicators, currency, priceHint }) {
   const { shortTrend, macdSignal } = indicators;
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       <div className="bg-slate-900 border-2 border-slate-700 rounded-xl p-4">
         <div className="text-slate-400 text-sm font-semibold mb-1">{symbol} Kurs</div>
-        <div className="text-2xl font-bold text-white">${indicators.lastPrice.toFixed(2)}</div>
+        <div className="text-2xl font-bold text-white">{formatPrice(indicators.lastPrice, currency, priceHint)}</div>
         <div className="text-base font-bold mt-1">
           <PriceChange value={indicators.priceChange} withIcon />
         </div>

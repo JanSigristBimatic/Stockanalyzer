@@ -21,7 +21,9 @@ export async function analyzeSymbol(symbol, period = '6M', interval = '1d') {
     prefetchCount: chart.prefetchCount,
     fundamentals: chart.instrumentType === 'EQUITY' ? fundamentals : null,
     dailyChangePercent: quoteSummary?.dailyChangePercent ?? null,
-    lastBarComplete: !isMarketOpen(chart.tradingPeriod)
+    lastBarComplete: !isMarketOpen(chart.tradingPeriod),
+    currency: chart.currency,
+    priceHint: chart.priceHint
   });
 
   return {

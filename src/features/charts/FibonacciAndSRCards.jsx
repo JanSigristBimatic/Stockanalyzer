@@ -1,6 +1,7 @@
 import { Target, Shield, AlertTriangle } from 'lucide-react';
+import { formatPrice } from '../../utils/format';
 
-export function FibonacciAndSRCards({ fibonacci, supportResistance, indicators }) {
+export function FibonacciAndSRCards({ fibonacci, supportResistance, indicators, currency, priceHint }) {
   return (
     <div className="grid md:grid-cols-2 gap-5">
       {/* Fibonacci Levels */}
@@ -18,7 +19,7 @@ export function FibonacciAndSRCards({ fibonacci, supportResistance, indicators }
                 className={`flex justify-between items-center p-2 rounded ${isNear ? 'bg-amber-900/40 border border-amber-500' : 'bg-slate-800'}`}
               >
                 <span className="text-slate-300 font-medium">{fib.label}</span>
-                <span className={`font-bold ${isNear ? 'text-amber-400' : 'text-white'}`}>${fib.price.toFixed(2)}</span>
+                <span className={`font-bold ${isNear ? 'text-amber-400' : 'text-white'}`}>{formatPrice(fib.price, currency, priceHint)}</span>
               </div>
             );
           })}
@@ -40,7 +41,7 @@ export function FibonacciAndSRCards({ fibonacci, supportResistance, indicators }
               supportResistance.resistance.map((r, i) => (
                 <div key={i} className="flex justify-between items-center p-2 bg-red-900/30 rounded mb-1">
                   <span className="text-slate-300">Level {i + 1}</span>
-                  <span className="text-white font-bold">${r.price.toFixed(2)}</span>
+                  <span className="text-white font-bold">{formatPrice(r.price, currency, priceHint)}</span>
                 </div>
               ))
             ) : (
@@ -55,7 +56,7 @@ export function FibonacciAndSRCards({ fibonacci, supportResistance, indicators }
               supportResistance.support.map((s, i) => (
                 <div key={i} className="flex justify-between items-center p-2 bg-green-900/30 rounded mb-1">
                   <span className="text-slate-300">Level {i + 1}</span>
-                  <span className="text-white font-bold">${s.price.toFixed(2)}</span>
+                  <span className="text-white font-bold">{formatPrice(s.price, currency, priceHint)}</span>
                 </div>
               ))
             ) : (

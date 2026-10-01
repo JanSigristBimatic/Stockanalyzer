@@ -5,7 +5,7 @@ import { FundamentalDataCard } from './FundamentalDataCard';
 /**
  * Fundamentals tab: valuation, profitability, growth and analyst data
  */
-export function FundamentalsTab({ data }) {
+export function FundamentalsTab({ data, currency, priceHint }) {
   if (!data) {
     return (
       <div className="text-center py-20">
@@ -18,7 +18,7 @@ export function FundamentalsTab({ data }) {
 
   return (
     <div className="space-y-6">
-      <FundamentalDataCard data={data} />
+      <FundamentalDataCard data={data} currency={currency} priceHint={priceHint} />
       <Disclaimer />
     </div>
   );

@@ -22,9 +22,13 @@ const RSI_OVERSOLD = 30;
  * @param {Object|null} [options.fundamentals=null] - Fundamental data for the verdict
  * @param {number|null} [options.dailyChangePercent=null] - Change against the previous close
  * @param {boolean} [options.lastBarComplete=true] - False while the current session is still running
+ * @param {string} [options.currency] - Quote currency for price texts in the verdict
+ * @param {number} [options.priceHint] - Decimal places for price texts in the verdict
  * @returns {{chartData: Array, indicators: Object, fibonacci: Object, supportResistance: Object, verdict: Object}}
  */
-export function analyzeStock(bars, { prefetchCount = 0, fundamentals = null, dailyChangePercent = null, lastBarComplete = true } = {}) {
+export function analyzeStock(bars, {
+  prefetchCount = 0, fundamentals = null, dailyChangePercent = null, lastBarComplete = true, currency, priceHint
+} = {}) {
   const series = calcIndicatorSeries(bars);
   const chartData = bars
     .map((bar, i) => ({ ...bar, ...seriesValuesAt(series, i) }))
@@ -34,7 +38,7 @@ export function analyzeStock(bars, { prefetchCount = 0, fundamentals = null, dai
   const fibonacci = calcFibonacci(displayBars);
   const supportResistance = calcSupportResistance(displayBars);
   const indicators = buildSnapshot(series, displayBars, { dailyChangePercent, lastBarComplete });
-  const verdict = generateVerdict(indicators, fibonacci, supportResistance, indicators.lastPrice, fundamentals);
+  const verdict = generateVerdict({ indicators, fibonacci, supportResistance, fundamentals, currency, priceHint });
 
   return { chartData, indicators, fibonacci, supportResistance, verdict };
 }

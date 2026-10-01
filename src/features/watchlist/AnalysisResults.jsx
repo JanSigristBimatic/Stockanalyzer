@@ -1,5 +1,6 @@
 import { CheckCircle2, Eye } from 'lucide-react';
 import { PriceChange } from '../../components/ui';
+import { formatPrice } from '../../utils/format';
 
 const SIGNAL_CHIP_CLASSES = {
   bullish: 'bg-green-900/50 text-green-400',
@@ -64,8 +65,7 @@ export function AnalysisResults({ results, onAnalyze, onClose }) {
             <div className="flex items-center gap-4">
               <div className="text-right hidden sm:block">
                 <div className="text-white font-semibold">
-                  {result.currency === 'USD' ? '$' : result.currency === 'EUR' ? '€' : result.currency + ' '}
-                  {result.price?.toFixed(2)}
+                  {formatPrice(result.price, result.currency, result.priceHint)}
                 </div>
                 <div className="text-sm font-semibold">
                   <PriceChange value={result.priceChange} />

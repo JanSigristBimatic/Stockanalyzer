@@ -1,5 +1,5 @@
 import { Loader2, TrendingUp, TrendingDown, RefreshCw, Trash2, ChevronUp, ChevronDown, Eye } from 'lucide-react';
-import { formatMarketCap } from '../../utils/format';
+import { formatPrice, formatCompactCurrency } from '../../utils/format';
 
 export function WatchlistItem({
   item, data, isLoading, isFirst, isLast,
@@ -27,8 +27,7 @@ export function WatchlistItem({
           <div className="flex flex-wrap items-center gap-4 sm:gap-6">
             <div className="text-right">
               <div className="text-white font-bold text-xl">
-                {data.currency === 'USD' ? '$' : data.currency === 'EUR' ? '€' : data.currency + ' '}
-                {data.price?.toFixed(2)}
+                {formatPrice(data.price, data.currency, data.priceHint)}
               </div>
               <div className={`text-sm font-semibold flex items-center justify-end gap-1 ${changeColor}`}>
                 {data.change >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
@@ -47,7 +46,7 @@ export function WatchlistItem({
               <div className="text-right hidden lg:block">
                 <div className="text-slate-400 text-xs">Market Cap</div>
                 <div className="text-white text-sm font-semibold">
-                  {formatMarketCap(data.marketCap)}
+                  {formatCompactCurrency(data.marketCap, data.currency)}
                 </div>
               </div>
             )}

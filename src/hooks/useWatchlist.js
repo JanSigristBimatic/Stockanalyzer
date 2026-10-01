@@ -120,6 +120,7 @@ export function useWatchlist() {
             change: change.toFixed(2),
             weekChange: weekChange.toFixed(2),
             currency: priceResult.currency,
+            priceHint: priceResult.priceHint,
             exchange: priceResult.exchange,
             marketCap: fundamentals?.marketCap,
             peRatio: fundamentals?.peRatio,

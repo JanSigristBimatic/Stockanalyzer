@@ -75,7 +75,7 @@ export default function App() {
 
         <TabNavigation activeTab={activeTab} setActiveTab={setActiveTab} watchlistCount={watchlist.length} />
 
-        {result && isDataTab && <DataSourceBadge dataInfo={result.meta} />}
+        {result && isDataTab && <DataSourceBadge meta={result.meta} />}
 
         {result && TIME_CONTROLLED_TABS.includes(activeTab) && (
           <TimePeriodControls
@@ -100,13 +100,17 @@ export default function App() {
             verdict={analysis.verdict}
             indicators={analysis.indicators}
             companyInfo={result.company}
+            currency={result.meta.currency}
+            priceHint={result.meta.priceHint}
             isInWatchlist={isInWatchlist(result.symbol)}
             onAddToWatchlist={() => addToWatchlist(result.symbol, result.company?.name)}
             onRemoveFromWatchlist={() => removeFromWatchlist(result.symbol)}
           />
         )}
 
-        {activeTab === 'kennzahlen' && result && <FundamentalsTab data={result.fundamentals} />}
+        {activeTab === 'kennzahlen' && result && (
+          <FundamentalsTab data={result.fundamentals} currency={result.meta.currency} priceHint={result.meta.priceHint} />
+        )}
 
         {activeTab === 'charts' && result && (
           <ChartsTab
@@ -116,6 +120,7 @@ export default function App() {
             supportResistance={analysis.supportResistance}
             indicators={analysis.indicators}
             currency={result.meta.currency}
+            priceHint={result.meta.priceHint}
           />
         )}
 

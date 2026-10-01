@@ -1,9 +1,9 @@
 import { DollarSign } from 'lucide-react';
 import { getRecommendationLabel } from '../../constants';
-import { formatMarketCap } from '../../utils/format';
+import { formatPrice, formatCompactCurrency } from '../../utils/format';
 import { MetricCard } from './MetricCard';
 
-export function FundamentalDataCard({ data }) {
+export function FundamentalDataCard({ data, currency, priceHint }) {
   return (
     <div className="bg-slate-900 border-2 border-slate-700 rounded-xl p-5">
       <div className="flex items-center gap-2 mb-4">
@@ -41,8 +41,8 @@ export function FundamentalDataCard({ data }) {
           {data.priceToSales != null && (
             <MetricCard label="KUV (P/S)" value={data.priceToSales.toFixed(2)} />
           )}
-          {data.marketCap && (
-            <MetricCard label="Marktkapitalisierung" value={formatMarketCap(data.marketCap)} />
+          {data.marketCap != null && (
+            <MetricCard label="Marktkapitalisierung" value={formatCompactCurrency(data.marketCap, currency)} />
           )}
         </div>
       </div>
@@ -82,8 +82,8 @@ export function FundamentalDataCard({ data }) {
           {data.eps != null && (
             <MetricCard
               label="EPS"
-              value={`$${data.eps.toFixed(2)}`}
-              subValue={data.forwardEps && `Forward: $${data.forwardEps.toFixed(2)}`}
+              value={data.eps.toFixed(2)}
+              subValue={data.forwardEps && `Forward: ${data.forwardEps.toFixed(2)}`}
             />
           )}
         </div>
@@ -110,8 +110,8 @@ export function FundamentalDataCard({ data }) {
           {data.week52High != null && data.week52Low != null && (
             <div className="bg-slate-800 border border-slate-600 rounded-lg p-3">
               <div className="text-slate-400 text-xs font-semibold mb-1">52-Wochen Range</div>
-              <div className="text-sm font-bold text-green-400">H: ${data.week52High.toFixed(2)}</div>
-              <div className="text-sm font-bold text-red-400">L: ${data.week52Low.toFixed(2)}</div>
+              <div className="text-sm font-bold text-green-400">H: {formatPrice(data.week52High, currency, priceHint)}</div>
+              <div className="text-sm font-bold text-red-400">L: {formatPrice(data.week52Low, currency, priceHint)}</div>
             </div>
           )}
         </div>
@@ -147,7 +147,7 @@ export function FundamentalDataCard({ data }) {
           {data.freeCashflow != null && (
             <MetricCard
               label="Free Cashflow"
-              value={formatMarketCap(data.freeCashflow)}
+              value={formatCompactCurrency(data.freeCashflow, data.financialCurrency ?? currency)}
               highlight={data.freeCashflow > 0 ? 'green' : 'red'}
             />
           )}
@@ -177,7 +177,7 @@ export function FundamentalDataCard({ data }) {
           {data.targetMeanPrice != null && (
             <MetricCard
               label="Analysten-Kursziel"
-              value={`$${data.targetMeanPrice.toFixed(2)}`}
+              value={formatPrice(data.targetMeanPrice, currency, priceHint)}
               subValue={data.numberOfAnalystOpinions && `${data.numberOfAnalystOpinions} Analysten`}
             />
           )}

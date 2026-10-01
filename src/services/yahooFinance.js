@@ -247,7 +247,9 @@ export function parseQuoteSummary(json, symbol) {
       targetLowPrice: raw(financial.targetLowPrice),
       recommendationMean: raw(financial.recommendationMean),
       recommendationKey: financial.recommendationKey ?? null,
-      numberOfAnalystOpinions: raw(financial.numberOfAnalystOpinions)
+      numberOfAnalystOpinions: raw(financial.numberOfAnalystOpinions),
+      // Currency of the financial statements (cash flow figures), may differ from the quote currency
+      financialCurrency: financial.financialCurrency ?? null
     },
     company: {
       name: price.longName || price.shortName || symbol,

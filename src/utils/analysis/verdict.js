@@ -1,6 +1,7 @@
 import { findNearestFibLevel } from './fibonacci';
 import { findNearbyLevel } from './supportResistance';
 import { getRecommendationLabel } from '../../constants/recommendations';
+import { formatPrice } from '../format';
 
 /**
  * Signal weights for different indicators
@@ -41,17 +42,21 @@ const VOLUME_SUB_SIGNAL_SCORE = 0.5;
 
 /**
  * Generates a trading verdict based on technical and fundamental indicators
- * @param {Object} indicators - Current indicator values
- * @param {Object} fibonacci - Fibonacci analysis result
- * @param {Object} supportResistance - Support/Resistance levels
- * @param {number} lastPrice - Current price
- * @param {Object} fundamentalData - Fundamental data (optional)
+ * @param {Object} input
+ * @param {Object} input.indicators - Current indicator values including lastPrice
+ * @param {Object} input.fibonacci - Fibonacci analysis result
+ * @param {Object} input.supportResistance - Support/Resistance levels
+ * @param {Object|null} [input.fundamentals] - Fundamental data
+ * @param {string} [input.currency] - Quote currency for price levels in signal texts
+ * @param {number} [input.priceHint] - Decimal places for price levels in signal texts
  * @returns {Object} - Verdict with signals, percentages, and recommendation
  */
-export function generateVerdict(indicators, fibonacci, supportResistance, lastPrice, fundamentalData = null) {
-  const technicalAnalysis = analyzeIndicators(indicators, fibonacci, supportResistance, lastPrice);
-  const fundamentalAnalysis = fundamentalData
-    ? analyzeFundamentals(fundamentalData, lastPrice)
+export function generateVerdict({ indicators, fibonacci, supportResistance, fundamentals = null, currency, priceHint }) {
+  const lastPrice = indicators.lastPrice;
+  const formatLevel = (price) => formatPrice(price, currency, priceHint);
+  const technicalAnalysis = analyzeIndicators(indicators, fibonacci, supportResistance, lastPrice, formatLevel);
+  const fundamentalAnalysis = fundamentals
+    ? analyzeFundamentals(fundamentals, lastPrice)
     : { bullishSignals: 0, bearishSignals: 0, neutralSignals: 0, signals: [] };
 
   // Combine technical and fundamental signals
@@ -77,7 +82,7 @@ export function generateVerdict(indicators, fibonacci, supportResistance, lastPr
 /**
  * Analyzes all indicators and generates signals
  */
-function analyzeIndicators(indicators, fibonacci, supportResistance, lastPrice) {
+function analyzeIndicators(indicators, fibonacci, supportResistance, lastPrice, formatLevel) {
   let bullishSignals = 0;
   let bearishSignals = 0;
   let neutralSignals = 0;
@@ -125,7 +130,7 @@ function analyzeIndicators(indicators, fibonacci, supportResistance, lastPrice) 
   }
 
   // Support/Resistance Analysis
-  const srSignals = analyzeSupportResistance(supportResistance, lastPrice);
+  const srSignals = analyzeSupportResistance(supportResistance, lastPrice, formatLevel);
   srSignals.forEach(s => {
     signals.push(s.signal);
     if (s.type === 'bullish') bullishSignals += SIGNAL_WEIGHTS.supportResistance;
@@ -215,14 +220,14 @@ function analyzeFibonacci(levels, price) {
  * Analyzes Support/Resistance proximity. A support only counts below the price and a
  * resistance only above it; broken levels on the wrong side are ignored.
  */
-function analyzeSupportResistance(sr, price) {
+function analyzeSupportResistance(sr, price, formatLevel) {
   const signals = [];
 
   const nearSupport = findNearbyLevel(sr.support.filter(level => level.price <= price), price);
   if (nearSupport) {
     signals.push({
       type: 'bullish',
-      signal: { type: 'bullish', text: `Nahe Unterstützung bei $${nearSupport.price.toFixed(2)}` }
+      signal: { type: 'bullish', text: `Nahe Unterstützung bei ${formatLevel(nearSupport.price)}` }
     });
   }
 
@@ -230,7 +235,7 @@ function analyzeSupportResistance(sr, price) {
   if (nearResistance) {
     signals.push({
       type: 'bearish',
-      signal: { type: 'bearish', text: `Nahe Widerstand bei $${nearResistance.price.toFixed(2)}` }
+      signal: { type: 'bearish', text: `Nahe Widerstand bei ${formatLevel(nearResistance.price)}` }
     });
   }
 
