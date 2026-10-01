@@ -1,4 +1,11 @@
 import { CheckCircle2, Eye } from 'lucide-react';
+import { PriceChange } from '../../components/ui';
+
+const SIGNAL_CHIP_CLASSES = {
+  bullish: 'bg-green-900/50 text-green-400',
+  bearish: 'bg-red-900/50 text-red-400'
+};
+const NEUTRAL_CHIP_CLASS = 'bg-slate-700 text-slate-400';
 
 /**
  * Results of "Alle analysieren", sorted by bullish percentage
@@ -60,20 +67,16 @@ export function AnalysisResults({ results, onAnalyze, onClose }) {
                   {result.currency === 'USD' ? '$' : result.currency === 'EUR' ? '€' : result.currency + ' '}
                   {result.price?.toFixed(2)}
                 </div>
-                <div className={`text-sm font-semibold ${parseFloat(result.priceChange) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {parseFloat(result.priceChange) >= 0 ? '+' : ''}{result.priceChange}%
+                <div className="text-sm font-semibold">
+                  <PriceChange value={result.priceChange} />
                 </div>
               </div>
 
               <div className="flex gap-1">
-                <span className={`px-2 py-1 rounded text-xs font-bold ${
-                  result.trend === 'bullish' ? 'bg-green-900/50 text-green-400' : 'bg-red-900/50 text-red-400'
-                }`}>
-                  {result.trend === 'bullish' ? '↗ Trend' : '↘ Trend'}
+                <span className={`px-2 py-1 rounded text-xs font-bold ${SIGNAL_CHIP_CLASSES[result.trend] ?? NEUTRAL_CHIP_CLASS}`}>
+                  {result.trend === 'bullish' ? '↗ Trend' : result.trend === 'bearish' ? '↘ Trend' : 'Trend'}
                 </span>
-                <span className={`px-2 py-1 rounded text-xs font-bold ${
-                  result.macdSignal === 'bullish' ? 'bg-green-900/50 text-green-400' : 'bg-red-900/50 text-red-400'
-                }`}>
+                <span className={`px-2 py-1 rounded text-xs font-bold ${SIGNAL_CHIP_CLASSES[result.macdSignal] ?? NEUTRAL_CHIP_CLASS}`}>
                   MACD
                 </span>
               </div>

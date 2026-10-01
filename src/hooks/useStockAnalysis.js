@@ -1,244 +1,141 @@
-import { useState, useCallback } from 'react';
-import { fetchStockData, fetchQuoteSummary, searchSymbolVariants } from '../services';
+import { useState, useCallback, useRef } from 'react';
+import { analyzeSymbol, searchSymbolVariants } from '../services';
 import { PERIOD_INTERVALS } from '../constants';
-import { calcSMA, calcRSI, calcMACD, calcBollinger, calcOBV, calcATR, calcStochastic, calcADX } from '../utils/indicators';
-import { calcFibonacci, calcSupportResistance, generateVerdict } from '../utils/analysis';
 
+const ERROR_MESSAGES = {
+  network: 'Netzwerkfehler beim Laden der Daten. Bitte prüfe Proxy oder Verbindung.',
+  parse: 'Antwort der Datenquelle konnte nicht verarbeitet werden.'
+};
+
+function getErrorMessage(error) {
+  if (error.type === 'http') {
+    return `Datenquelle antwortet mit Fehler ${error.status}. Bitte später erneut versuchen.`;
+  }
+  return ERROR_MESSAGES[error.type] || 'Daten konnten nicht geladen werden.';
+}
+
+function getNotFoundMessage(symbol) {
+  return `Symbol "${symbol}" konnte nicht gefunden werden. Bitte überprüfe das Symbol und versuche es erneut.`;
+}
+
+/**
+ * Loads and analyzes the selected stock. Only the latest request may update the state, and a
+ * failed request keeps the data on screen so the error can be shown above it.
+ */
 export function useStockAnalysis() {
   const [symbol, setSymbol] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [searching, setSearching] = useState(false);
-  const [error, setError] = useState(null);
-  const [suggestions, setSuggestions] = useState([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [stockData, setStockData] = useState(null);
-  const [indicators, setIndicators] = useState(null);
-  const [fibonacci, setFibonacci] = useState(null);
-  const [supportResistance, setSupportResistance] = useState(null);
-  const [verdict, setVerdict] = useState(null);
-  const [dataInfo, setDataInfo] = useState(null);
-  const [fundamentalData, setFundamentalData] = useState(null);
-  const [companyInfo, setCompanyInfo] = useState(null);
+  const [result, setResult] = useState(null);
   const [timePeriod, setTimePeriod] = useState('6M');
   const [interval, setInterval] = useState('1d');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [suggestions, setSuggestions] = useState([]);
+  const requestIdRef = useRef(0);
 
-  const getFetchErrorMessage = useCallback((error) => {
-    if (!error) return null;
-    if (error.type === 'network') {
-      return 'Netzwerkfehler beim Laden der Daten. Bitte prüfe Proxy oder Verbindung.';
-    }
-    if (error.type === 'http') {
-      return `Datenquelle antwortet mit Fehler ${error.status}. Bitte später erneut versuchen.`;
-    }
-    if (error.type === 'parse') {
-      return 'Antwort der Datenquelle konnte nicht verarbeitet werden.';
-    }
-    return 'Daten konnten nicht geladen werden.';
-  }, []);
-
-  const processData = useCallback((data, fundamentals = null, prefetchCount = 0) => {
-    // Calculate indicators on full data (including prefetch) so SMAs are valid from display start
-    const sma20 = calcSMA(data, 20);
-    const sma50 = calcSMA(data, 50);
-    const rsi = calcRSI(data);
-    const macd = calcMACD(data);
-    const bollinger = calcBollinger(data);
-    const obv = calcOBV(data);
-    const atr = calcATR(data);
-    const stochastic = calcStochastic(data);
-    const adxData = calcADX(data);
-
-    // Enrich full data with indicators
-    const fullEnrichedData = data.map((d, i) => ({
-      ...d,
-      sma20: sma20[i], sma50: sma50[i], rsi: rsi[i],
-      macd: macd.macdLine[i], signal: macd.signalLine[i], histogram: macd.histogram[i],
-      bbUpper: bollinger[i].upper, bbMiddle: bollinger[i].middle, bbLower: bollinger[i].lower,
-      obv: obv[i], atr: atr[i],
-      stochK: stochastic.stochK[i], stochD: stochastic.stochD[i],
-      adx: adxData.adx[i], plusDI: adxData.plusDI[i], minusDI: adxData.minusDI[i]
-    }));
-
-    // Trim prefetch data - only display data from requested period onward
-    const enrichedData = fullEnrichedData.slice(prefetchCount);
-    const displayData = data.slice(prefetchCount);
-
-    // Calculate Fibonacci and S/R on display data only
-    const fib = calcFibonacci(displayData);
-    const sr = calcSupportResistance(displayData);
-
-    const lastPrice = displayData[displayData.length - 1].close;
-    const prevPrice = displayData[displayData.length - 2].close;
-    const lastRSI = rsi[rsi.length - 1];
-    const lastBB = bollinger[bollinger.length - 1];
-
-    let bbPosition = 'middle';
-    if (lastBB.upper && lastPrice > lastBB.upper - (lastBB.upper - lastBB.middle) * 0.2) bbPosition = 'upper';
-    else if (lastBB.lower && lastPrice < lastBB.lower + (lastBB.middle - lastBB.lower) * 0.2) bbPosition = 'lower';
-
-    // Volume Analysis Data
-    const recentVolumes = displayData.slice(-20).map(d => d.volume);
-    const avgVolume = recentVolumes.reduce((a, b) => a + b, 0) / recentVolumes.length;
-    const currentVolume = displayData[displayData.length - 1].volume;
-
-    // OBV Trend: Vergleiche OBV der letzten 5 Tage mit den 5 Tagen davor
-    const obvRecent = obv.slice(-5);
-    const obvPrev = obv.slice(-10, -5);
-    const obvRecentAvg = obvRecent.reduce((a, b) => a + b, 0) / obvRecent.length;
-    const obvPrevAvg = obvPrev.reduce((a, b) => a + b, 0) / obvPrev.length;
-    const obvTrend = obvRecentAvg > obvPrevAvg * 1.02 ? 'rising' : obvRecentAvg < obvPrevAvg * 0.98 ? 'falling' : 'neutral';
-
-    // Preis-Richtung (letzte 5 Tage)
-    const priceDirection = lastPrice > displayData[displayData.length - 5]?.close ? 'up' : 'down';
-
-    // Volumen-Preis Bestätigung: Steigt der Preis mit steigendem OBV? Fällt er mit fallendem OBV?
-    const volumeConfirmation = (priceDirection === 'up' && obvTrend === 'rising') ||
-                               (priceDirection === 'down' && obvTrend === 'falling');
-
-    const indicatorData = {
-      lastPrice,
-      priceChange: ((lastPrice - prevPrice) / prevPrice * 100).toFixed(2),
-      lastRSI,
-      shortTrend: sma20[sma20.length - 1] > sma50[sma50.length - 1] ? 'bullish' : 'bearish',
-      rsiSignal: lastRSI > 70 ? 'overbought' : lastRSI < 30 ? 'oversold' : 'neutral',
-      macdSignal: macd.histogram[macd.histogram.length - 1] > 0 ? 'bullish' : 'bearish',
-      sma20: sma20[sma20.length - 1], sma50: sma50[sma50.length - 1], bbPosition,
-      lastATR: atr[atr.length - 1],
-      lastStochK: stochastic.stochK[stochastic.stochK.length - 1],
-      lastStochD: stochastic.stochD[stochastic.stochD.length - 1],
-      lastADX: adxData.adx[adxData.adx.length - 1],
-      // Volume Data für Analyse
-      volumeData: {
-        currentVolume,
-        avgVolume,
-        obvTrend,
-        priceDirection,
-        volumeConfirmation
-      }
-    };
-
-    setIndicators(indicatorData);
-    setStockData(enrichedData);
-    setFibonacci(fib);
-    setSupportResistance(sr);
-    setVerdict(generateVerdict(indicatorData, fib, sr, lastPrice, fundamentals));
-    setLoading(false);
-  }, []);
-
-  const analyzeWithData = useCallback(async (sym, result) => {
-    setSymbol(sym);
-    setDataInfo({ currency: result.currency, exchange: result.exchange });
-    const quoteSummary = await fetchQuoteSummary(sym);
-    const fundamentals = quoteSummary?.fundamentals ?? null;
-    setFundamentalData(fundamentals);
-    setCompanyInfo(quoteSummary?.company ?? null);
-    processData(result.data, fundamentals, result.prefetchCount || 0);
-  }, [processData]);
-
-  const showNotFoundError = useCallback((sym) => {
-    setSymbol(sym);
-    setDataInfo(null);
-    setStockData(null);
-    setIndicators(null);
-    setFibonacci(null);
-    setSupportResistance(null);
-    setVerdict(null);
-    setFundamentalData(null);
-    setCompanyInfo(null);
-    setError(`Symbol "${sym}" konnte nicht gefunden werden. Bitte überprüfe das Symbol und versuche es erneut.`);
-    setLoading(false);
-  }, []);
-
-  const selectSuggestion = useCallback(async (selectedSymbol) => {
-    setShowSuggestions(false);
-    setSuggestions([]);
+  const startRequest = useCallback((requestedSymbol) => {
+    requestIdRef.current += 1;
+    setSymbol(requestedSymbol);
     setLoading(true);
     setError(null);
-    setSymbol(selectedSymbol);
-    const result = await fetchStockData(selectedSymbol);
-    if (result?.error && result.error.type !== 'symbol') {
-      setError(getFetchErrorMessage(result.error));
-      setLoading(false);
-      return;
-    }
-    if (result?.data?.length > 20) {
-      analyzeWithData(selectedSymbol, result);
-    } else {
-      showNotFoundError(selectedSymbol);
-    }
-  }, [analyzeWithData, showNotFoundError, getFetchErrorMessage]);
-
-  const handleSearch = useCallback(async (query) => {
-    const upperSymbol = query.trim().toUpperCase();
-    if (!upperSymbol) return;
-    setSearching(true);
-    setError(null);
     setSuggestions([]);
-    setShowSuggestions(false);
-    const directResult = await fetchStockData(upperSymbol);
-    if (directResult?.error && directResult.error.type !== 'symbol') {
-      setSearching(false);
-      setError(getFetchErrorMessage(directResult.error));
+    return requestIdRef.current;
+  }, []);
+
+  const isLatestRequest = useCallback((requestId) => requestId === requestIdRef.current, []);
+
+  const showResult = useCallback((resultSymbol, response) => {
+    setResult({ symbol: resultSymbol, ...response });
+    setLoading(false);
+  }, []);
+
+  const showError = useCallback((message) => {
+    setError(message);
+    setLoading(false);
+  }, []);
+
+  /**
+   * Opens a known symbol, e.g. from the exchange suggestions, the watchlist or the scanner
+   */
+  const selectSymbol = useCallback(async (selectedSymbol) => {
+    const requestId = startRequest(selectedSymbol);
+    const response = await analyzeSymbol(selectedSymbol, timePeriod, interval);
+    if (!isLatestRequest(requestId)) return;
+
+    if (response.error) {
+      showError(response.error.type === 'symbol' ? getNotFoundMessage(selectedSymbol) : getErrorMessage(response.error));
       return;
     }
-    if (directResult?.data?.length > 20) {
-      setSearching(false);
-      analyzeWithData(upperSymbol, directResult);
-    } else {
-      const variants = await searchSymbolVariants(upperSymbol);
-      setSearching(false);
-      if (variants.length === 1) {
-        selectSuggestion(variants[0].symbol);
-      } else if (variants.length > 1) {
-        setSuggestions(variants);
-        setShowSuggestions(true);
-      } else {
-        showNotFoundError(upperSymbol);
-      }
-    }
-  }, [analyzeWithData, showNotFoundError, selectSuggestion, getFetchErrorMessage]);
+    showResult(selectedSymbol, response);
+  }, [timePeriod, interval, startRequest, isLatestRequest, showError, showResult]);
 
-  const changePeriod = useCallback(async (newPeriod) => {
+  /**
+   * Searches the entered symbol; unknown symbols are looked up on other exchanges
+   */
+  const search = useCallback(async (query) => {
+    const querySymbol = query.trim().toUpperCase();
+    if (!querySymbol) return;
+
+    const requestId = startRequest(querySymbol);
+    const response = await analyzeSymbol(querySymbol, timePeriod, interval);
+    if (!isLatestRequest(requestId)) return;
+
+    if (!response.error) {
+      showResult(querySymbol, response);
+      return;
+    }
+    if (response.error.type !== 'symbol') {
+      showError(getErrorMessage(response.error));
+      return;
+    }
+
+    const variants = await searchSymbolVariants(querySymbol);
+    if (!isLatestRequest(requestId)) return;
+
+    if (variants.length === 1) {
+      selectSymbol(variants[0].symbol);
+    } else if (variants.length > 1) {
+      setSuggestions(variants);
+      setLoading(false);
+    } else {
+      showError(getNotFoundMessage(querySymbol));
+    }
+  }, [timePeriod, interval, startRequest, isLatestRequest, showError, showResult, selectSymbol]);
+
+  /**
+   * Reloads the displayed stock with a new period or interval. The selection only changes once
+   * the data for it has arrived, so controls and data never disagree.
+   */
+  const reload = useCallback(async (newPeriod, newInterval) => {
+    if (!result) {
+      setTimePeriod(newPeriod);
+      setInterval(newInterval);
+      return;
+    }
+
+    const requestId = startRequest(result.symbol);
+    const response = await analyzeSymbol(result.symbol, newPeriod, newInterval);
+    if (!isLatestRequest(requestId)) return;
+
+    if (response.error) {
+      showError(getErrorMessage(response.error));
+      return;
+    }
     setTimePeriod(newPeriod);
-    const allowedIntervals = PERIOD_INTERVALS[newPeriod];
-    const newInterval = allowedIntervals.includes(interval) ? interval : allowedIntervals[0];
-    if (newInterval !== interval) setInterval(newInterval);
-    if (!symbol) return;
-    setLoading(true);
-    const result = await fetchStockData(symbol, newPeriod, newInterval);
-    if (result?.error) {
-      setError(getFetchErrorMessage(result.error));
-      setLoading(false);
-      return;
-    }
-    if (result?.data) {
-      await analyzeWithData(symbol, result);
-    } else {
-      setLoading(false);
-    }
-  }, [symbol, interval, analyzeWithData, getFetchErrorMessage]);
-
-  const changeInterval = useCallback(async (newInterval) => {
     setInterval(newInterval);
-    if (!symbol) return;
-    setLoading(true);
-    const result = await fetchStockData(symbol, timePeriod, newInterval);
-    if (result?.error) {
-      setError(getFetchErrorMessage(result.error));
-      setLoading(false);
-      return;
-    }
-    if (result?.data) {
-      await analyzeWithData(symbol, result);
-    } else {
-      setLoading(false);
-    }
-  }, [symbol, timePeriod, analyzeWithData, getFetchErrorMessage]);
+    showResult(result.symbol, response);
+  }, [result, startRequest, isLatestRequest, showError, showResult]);
+
+  const changePeriod = useCallback((newPeriod) => {
+    const allowedIntervals = PERIOD_INTERVALS[newPeriod];
+    reload(newPeriod, allowedIntervals.includes(interval) ? interval : allowedIntervals[0]);
+  }, [interval, reload]);
+
+  const changeInterval = useCallback((newInterval) => {
+    reload(timePeriod, newInterval);
+  }, [timePeriod, reload]);
 
   return {
-    symbol, loading, searching, error, suggestions, showSuggestions,
-    stockData, indicators, fibonacci, supportResistance, verdict, dataInfo, fundamentalData, companyInfo,
-    timePeriod, interval,
-    handleSearch, selectSuggestion, changePeriod, changeInterval
+    symbol, result, timePeriod, interval, loading, error, suggestions,
+    search, selectSymbol, changePeriod, changeInterval
   };
 }

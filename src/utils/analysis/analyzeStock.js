@@ -1,0 +1,181 @@
+import { calcSMA, calcRSI, calcMACD, calcBollinger, calcOBV, calcATR, calcStochastic, calcADX } from '../indicators';
+import { calcFibonacci } from './fibonacci';
+import { calcSupportResistance } from './supportResistance';
+import { generateVerdict } from './verdict';
+
+const VOLUME_AVERAGE_BARS = 20;
+const PRICE_DIRECTION_BARS = 5;
+const OBV_TREND_BARS = 5;
+// Difference of the two OBV window averages, measured in average bar volumes
+const OBV_TREND_THRESHOLD = 1;
+const BOLLINGER_EDGE_SHARE = 0.2;
+const RSI_OVERBOUGHT = 70;
+const RSI_OVERSOLD = 30;
+
+/**
+ * Runs the complete technical analysis for a bar series.
+ * Indicators are calculated on all bars (incl. prefetch) so they are warmed up at the first
+ * display bar; Fibonacci, support/resistance, the snapshot and the verdict use the display bars.
+ * @param {Array} bars - OHLCV bars including the prefetch
+ * @param {Object} [options]
+ * @param {number} [options.prefetchCount=0] - Leading bars used only for warm-up
+ * @param {Object|null} [options.fundamentals=null] - Fundamental data for the verdict
+ * @param {number|null} [options.dailyChangePercent=null] - Change against the previous close
+ * @param {boolean} [options.lastBarComplete=true] - False while the current session is still running
+ * @returns {{chartData: Array, indicators: Object, fibonacci: Object, supportResistance: Object, verdict: Object}}
+ */
+export function analyzeStock(bars, { prefetchCount = 0, fundamentals = null, dailyChangePercent = null, lastBarComplete = true } = {}) {
+  const series = calcIndicatorSeries(bars);
+  const chartData = bars
+    .map((bar, i) => ({ ...bar, ...seriesValuesAt(series, i) }))
+    .slice(prefetchCount);
+
+  const displayBars = bars.slice(prefetchCount);
+  const fibonacci = calcFibonacci(displayBars);
+  const supportResistance = calcSupportResistance(displayBars);
+  const indicators = buildSnapshot(series, displayBars, { dailyChangePercent, lastBarComplete });
+  const verdict = generateVerdict(indicators, fibonacci, supportResistance, indicators.lastPrice, fundamentals);
+
+  return { chartData, indicators, fibonacci, supportResistance, verdict };
+}
+
+/**
+ * Condenses an analysis into the row shown by the watchlist and the scanner
+ */
+export function toAnalysisSummary(symbol, { indicators, verdict }, meta) {
+  return {
+    symbol,
+    price: indicators.lastPrice,
+    priceChange: indicators.priceChange,
+    bullishPercent: verdict.bullishPercent,
+    bearishPercent: verdict.bearishPercent,
+    verdict: verdict.verdict,
+    verdictType: verdict.verdictType,
+    recommendation: verdict.recommendation,
+    signals: verdict.signals,
+    currency: meta.currency,
+    exchange: meta.exchange,
+    priceHint: meta.priceHint,
+    rsi: indicators.lastRSI,
+    trend: indicators.shortTrend,
+    macdSignal: indicators.macdSignal
+  };
+}
+
+function calcIndicatorSeries(bars) {
+  const macd = calcMACD(bars);
+  const bollinger = calcBollinger(bars);
+  const stochastic = calcStochastic(bars);
+  const adx = calcADX(bars);
+
+  return {
+    sma20: calcSMA(bars, 20),
+    sma50: calcSMA(bars, 50),
+    rsi: calcRSI(bars),
+    macd: macd.macdLine,
+    signal: macd.signalLine,
+    histogram: macd.histogram,
+    bbUpper: bollinger.map(band => band.upper),
+    bbMiddle: bollinger.map(band => band.middle),
+    bbLower: bollinger.map(band => band.lower),
+    obv: calcOBV(bars),
+    atr: calcATR(bars),
+    stochK: stochastic.stochK,
+    stochD: stochastic.stochD,
+    adx: adx.adx,
+    plusDI: adx.plusDI,
+    minusDI: adx.minusDI
+  };
+}
+
+function seriesValuesAt(series, index) {
+  return Object.fromEntries(Object.entries(series).map(([key, values]) => [key, values[index]]));
+}
+
+function buildSnapshot(series, displayBars, { dailyChangePercent, lastBarComplete }) {
+  const lastPrice = displayBars[displayBars.length - 1].close;
+  const lastRSI = last(series.rsi);
+  const sma20 = last(series.sma20);
+  const sma50 = last(series.sma50);
+  const histogram = last(series.histogram);
+
+  return {
+    lastPrice,
+    priceChange: dailyChangePercent,
+    lastRSI,
+    shortTrend: sma20 == null || sma50 == null ? null : (sma20 > sma50 ? 'bullish' : 'bearish'),
+    rsiSignal: getRsiZone(lastRSI),
+    macdSignal: histogram == null ? null : (histogram > 0 ? 'bullish' : 'bearish'),
+    sma20,
+    sma50,
+    bbPosition: getBollingerPosition(lastPrice, last(series.bbUpper), last(series.bbMiddle), last(series.bbLower)),
+    lastATR: last(series.atr),
+    lastStochK: last(series.stochK),
+    lastStochD: last(series.stochD),
+    lastADX: last(series.adx),
+    volumeData: buildVolumeData(displayBars, series.obv, lastBarComplete)
+  };
+}
+
+function getRsiZone(rsi) {
+  if (rsi > RSI_OVERBOUGHT) return 'overbought';
+  if (rsi < RSI_OVERSOLD) return 'oversold';
+  return 'neutral';
+}
+
+function getBollingerPosition(price, upper, middle, lower) {
+  if (upper == null || lower == null) return 'middle';
+  if (price > upper - (upper - middle) * BOLLINGER_EDGE_SHARE) return 'upper';
+  if (price < lower + (middle - lower) * BOLLINGER_EDGE_SHARE) return 'lower';
+  return 'middle';
+}
+
+/**
+ * Volume figures of the last completed bar. While the session runs, the last bar is still
+ * forming and its partial volume would always look low, so it is left out.
+ */
+function buildVolumeData(bars, obv, lastBarComplete) {
+  const completedBars = lastBarComplete ? bars : bars.slice(0, -1);
+  const completedObv = lastBarComplete ? obv : obv.slice(0, -1);
+  if (completedBars.length < PRICE_DIRECTION_BARS) return null;
+
+  const avgVolume = average(completedBars.slice(-VOLUME_AVERAGE_BARS).map(bar => bar.volume));
+  const directionWindow = completedBars.slice(-PRICE_DIRECTION_BARS);
+
+  return {
+    currentVolume: completedBars[completedBars.length - 1].volume,
+    avgVolume,
+    obvTrend: getObvTrend(completedObv, avgVolume),
+    priceDirection: getPriceDirection(directionWindow[directionWindow.length - 1].close, directionWindow[0].close)
+  };
+}
+
+/**
+ * Compares the average OBV of the last bars with the bars before. The difference is scaled by
+ * the average volume, which keeps the result independent of the (arbitrary) OBV level and sign.
+ */
+function getObvTrend(obv, avgVolume) {
+  if (obv.length < OBV_TREND_BARS * 2 || !(avgVolume > 0)) return 'neutral';
+
+  const recent = average(obv.slice(-OBV_TREND_BARS));
+  const previous = average(obv.slice(-OBV_TREND_BARS * 2, -OBV_TREND_BARS));
+  const change = (recent - previous) / avgVolume;
+
+  if (change > OBV_TREND_THRESHOLD) return 'rising';
+  if (change < -OBV_TREND_THRESHOLD) return 'falling';
+  return 'neutral';
+}
+
+function getPriceDirection(lastClose, referenceClose) {
+  if (lastClose > referenceClose) return 'up';
+  if (lastClose < referenceClose) return 'down';
+  return 'flat';
+}
+
+function last(values) {
+  return values[values.length - 1] ?? null;
+}
+
+function average(values) {
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}

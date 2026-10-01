@@ -4,7 +4,7 @@ import { Header } from './components/layout/Header';
 import { TabNavigation } from './components/layout/TabNavigation';
 import { DataSourceBadge } from './components/layout/DataSourceBadge';
 import { TimePeriodControls } from './components/layout/TimePeriodControls';
-import { ErrorState, EmptyState } from './components/ui';
+import { ErrorState, EmptyState, ErrorBanner } from './components/ui';
 import { SearchBar } from './features/search/SearchBar';
 import { ExchangeSuggestions } from './features/search/ExchangeSuggestions';
 import { AnalysisTab } from './features/analysis/AnalysisTab';
@@ -26,10 +26,8 @@ export default function App() {
   const [expandedCards, setExpandedCards] = useState({});
 
   const {
-    symbol, loading, searching, error,
-    suggestions, showSuggestions, stockData, indicators, fibonacci,
-    supportResistance, verdict, dataInfo, fundamentalData, companyInfo,
-    timePeriod, interval, handleSearch, selectSuggestion, changePeriod, changeInterval
+    symbol, result, timePeriod, interval, loading, error, suggestions,
+    search, selectSymbol, changePeriod, changeInterval
   } = useStockAnalysis();
 
   const {
@@ -57,72 +55,71 @@ export default function App() {
   };
 
   const openInAnalysis = (sym) => {
-    selectSuggestion(sym);
+    selectSymbol(sym);
     setActiveTab('analyse');
   };
 
   const isDataTab = DATA_TABS.includes(activeTab);
+  const analysis = result?.analysis;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-6" style={{ fontFamily: "Roboto, system-ui, -apple-system, sans-serif" }}>
       <div className="max-w-7xl mx-auto">
         <Header />
 
-        <SearchBar
-          currentSymbol={symbol}
-          loading={loading}
-          searching={searching}
-          onSearch={handleSearch}
-        />
+        <SearchBar currentSymbol={symbol} loading={loading} onSearch={search} />
 
-        {showSuggestions && suggestions.length > 0 && (
-          <ExchangeSuggestions suggestions={suggestions} onSelect={selectSuggestion} />
+        {suggestions.length > 0 && (
+          <ExchangeSuggestions suggestions={suggestions} onSelect={selectSymbol} />
         )}
 
         <TabNavigation activeTab={activeTab} setActiveTab={setActiveTab} watchlistCount={watchlist.length} />
 
-        {stockData && isDataTab && <DataSourceBadge dataInfo={dataInfo} />}
+        {result && isDataTab && <DataSourceBadge dataInfo={result.meta} />}
 
-        {stockData && TIME_CONTROLLED_TABS.includes(activeTab) && (
+        {result && TIME_CONTROLLED_TABS.includes(activeTab) && (
           <TimePeriodControls
             timePeriod={timePeriod}
             interval={interval}
+            loading={loading}
             onPeriodChange={changePeriod}
             onIntervalChange={changeInterval}
           />
         )}
 
+        {result && isDataTab && error && <ErrorBanner message={error} />}
+
         {activeTab === 'lernen' && (
           <EducationTab expandedCards={expandedCards} toggleCard={toggleCard} />
         )}
 
-        {activeTab === 'analyse' && stockData && indicators && verdict && (
+        {activeTab === 'analyse' && result && (
           <AnalysisTab
             key={`analyse-${timePeriod}-${interval}`}
-            symbol={symbol}
-            verdict={verdict}
-            indicators={indicators}
-            companyInfo={companyInfo}
-            isInWatchlist={isInWatchlist(symbol)}
-            onAddToWatchlist={() => addToWatchlist(symbol, companyInfo?.name)}
-            onRemoveFromWatchlist={() => removeFromWatchlist(symbol)}
+            symbol={result.symbol}
+            verdict={analysis.verdict}
+            indicators={analysis.indicators}
+            companyInfo={result.company}
+            isInWatchlist={isInWatchlist(result.symbol)}
+            onAddToWatchlist={() => addToWatchlist(result.symbol, result.company?.name)}
+            onRemoveFromWatchlist={() => removeFromWatchlist(result.symbol)}
           />
         )}
 
-        {activeTab === 'kennzahlen' && stockData && <FundamentalsTab data={fundamentalData} />}
+        {activeTab === 'kennzahlen' && result && <FundamentalsTab data={result.fundamentals} />}
 
-        {activeTab === 'charts' && stockData && indicators && (
+        {activeTab === 'charts' && result && (
           <ChartsTab
             key={`charts-${timePeriod}-${interval}`}
-            stockData={stockData}
-            fibonacci={fibonacci}
-            supportResistance={supportResistance}
-            indicators={indicators}
-            currency={dataInfo?.currency}
+            stockData={analysis.chartData}
+            fibonacci={analysis.fibonacci}
+            supportResistance={analysis.supportResistance}
+            indicators={analysis.indicators}
+            currency={result.meta.currency}
           />
         )}
 
-        {isDataTab && !stockData && !loading && (error ? <ErrorState error={error} /> : <EmptyState />)}
+        {isDataTab && !result && !loading && (error ? <ErrorState error={error} /> : <EmptyState />)}
 
         {activeTab === 'scanner' && (
           <AutoScanTab

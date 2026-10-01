@@ -6,3 +6,5 @@ export { EducationCard } from './EducationCard';
 export { Disclaimer } from './Disclaimer';
 export { ErrorState } from './ErrorState';
 export { EmptyState } from './EmptyState';
+export { ErrorBanner } from './ErrorBanner';
+export { PriceChange } from './PriceChange';

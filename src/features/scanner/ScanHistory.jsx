@@ -1,4 +1,5 @@
 import { Activity, Eye, Star } from 'lucide-react';
+import { PriceChange } from '../../components/ui';
 
 /**
  * Lists the most recent scan results, highlighting stocks above the threshold
@@ -37,8 +38,8 @@ export function ScanHistory({ history, threshold, onAnalyze, addToWatchlist, isI
                   {stock.currency === 'USD' ? '$' : stock.currency === 'EUR' ? '€' : ''}
                   {stock.price?.toFixed(2)}
                 </div>
-                <div className={`text-sm font-semibold ${parseFloat(stock.priceChange) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {stock.priceChange}%
+                <div className="text-sm font-semibold">
+                  <PriceChange value={stock.priceChange} />
                 </div>
               </div>
               <button

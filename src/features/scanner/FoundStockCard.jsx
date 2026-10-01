@@ -1,4 +1,5 @@
-import { CheckCircle2, TrendingUp, TrendingDown, Eye, Star } from 'lucide-react';
+import { CheckCircle2, Eye, Star } from 'lucide-react';
+import { PriceChange } from '../../components/ui';
 import { BIMATIC_BLUE } from '../../constants';
 
 /**
@@ -26,9 +27,8 @@ export function FoundStockCard({ stock, threshold, onAnalyze, addToWatchlist, is
               {stock.currency === 'USD' ? '$' : stock.currency === 'EUR' ? '€' : stock.currency + ' '}
               {stock.price?.toFixed(2)}
             </div>
-            <div className={`text-lg font-bold flex items-center justify-end gap-1 ${parseFloat(stock.priceChange) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              {parseFloat(stock.priceChange) >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-              {stock.priceChange}%
+            <div className="text-lg font-bold">
+              <PriceChange value={stock.priceChange} withIcon />
             </div>
           </div>
         </div>

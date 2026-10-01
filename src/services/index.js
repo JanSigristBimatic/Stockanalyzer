@@ -7,3 +7,4 @@ export {
   getTimePeriod,
   isMarketOpen
 } from './yahooFinance';
+export { analyzeSymbol } from './analyzeSymbol';

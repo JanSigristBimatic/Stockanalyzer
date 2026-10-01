@@ -3,7 +3,7 @@ import { Search, Zap, Loader2 } from 'lucide-react';
 import { BIMATIC_BLUE } from '../../constants';
 import { useSymbolAutocomplete } from '../../hooks';
 
-export function SearchBar({ currentSymbol, loading, searching, onSearch }) {
+export function SearchBar({ currentSymbol, loading, onSearch }) {
   const [inputValue, setInputValue] = useState(currentSymbol);
   const [syncedSymbol, setSyncedSymbol] = useState(currentSymbol);
   const autocomplete = useSymbolAutocomplete();
@@ -30,7 +30,7 @@ export function SearchBar({ currentSymbol, loading, searching, onSearch }) {
     autocomplete.search(value);
   };
 
-  const isDisabled = loading || searching || !inputValue.trim();
+  const isDisabled = loading || !inputValue.trim();
 
   return (
     <div className="flex flex-col sm:flex-row gap-3 mb-6">
@@ -97,8 +97,8 @@ export function SearchBar({ currentSymbol, loading, searching, onSearch }) {
         className="px-6 py-3 text-white text-lg font-bold rounded-xl flex items-center justify-center gap-2 transition-colors disabled:bg-slate-700 disabled:text-slate-500"
         style={{ backgroundColor: isDisabled ? undefined : BIMATIC_BLUE }}
       >
-        {(loading || searching) ? <Loader2 className="w-5 h-5 animate-spin" /> : <Zap className="w-5 h-5" />}
-        {searching ? 'Suche...' : 'Analysieren'}
+        {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Zap className="w-5 h-5" />}
+        {loading ? 'Lädt...' : 'Analysieren'}
       </button>
     </div>
   );
