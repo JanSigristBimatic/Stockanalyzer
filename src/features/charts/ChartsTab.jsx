@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Disclaimer } from '../../components/ui';
 import { PriceChart } from './PriceChart';
 import { FibonacciAndSRCards } from './FibonacciAndSRCards';
@@ -9,9 +10,10 @@ import { StochasticChart } from './StochasticChart';
 import { ADXChart } from './ADXChart';
 
 /**
- * Charts tab: price chart with levels plus all indicator charts
+ * Charts tab: price chart with levels plus all indicator charts.
+ * Memoized so unrelated app state (watchlist, scanner, loading flags) does not redraw all charts.
  */
-export function ChartsTab({ stockData, fibonacci, supportResistance, indicators, currency, priceHint }) {
+export const ChartsTab = memo(function ChartsTab({ stockData, fibonacci, supportResistance, indicators, currency, priceHint }) {
   return (
     <div className="space-y-6">
       <PriceChart
@@ -37,4 +39,4 @@ export function ChartsTab({ stockData, fibonacci, supportResistance, indicators,
       <Disclaimer />
     </div>
   );
-}
+});

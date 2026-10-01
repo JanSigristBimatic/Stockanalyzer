@@ -5,6 +5,11 @@ import { BIMATIC_BLUE, CHART_COLORS, TOOLTIP_STYLE, INDICATOR_INFO } from '../..
 import { reduceChartData } from '../../utils/chartData';
 import { formatPrice } from '../../utils/format';
 
+// Recharts draws an area between both values when the data key returns a [low, high] pair
+const bollingerRange = (point) => (
+  point.bbLower == null || point.bbUpper == null ? null : [point.bbLower, point.bbUpper]
+);
+
 /**
  * Custom tooltip that shows full date
  */
@@ -23,7 +28,11 @@ function CustomTooltip({ active, payload, label, currency, priceHint }) {
       {payload.map((entry, i) => (
         <div key={i} className="flex justify-between gap-4 text-sm">
           <span style={{ color: entry.color }}>{entry.name}:</span>
-          <span className="font-bold text-white">{formatPrice(entry.value, currency, priceHint)}</span>
+          <span className="font-bold text-white">
+            {Array.isArray(entry.value)
+              ? entry.value.map(value => formatPrice(value, currency, priceHint)).join(' bis ')
+              : formatPrice(entry.value, currency, priceHint)}
+          </span>
         </div>
       ))}
     </div>
@@ -100,10 +109,18 @@ export function PriceChart({ data, fibonacci, supportResistance, currency, price
             />
           ))}
 
-          <Area type="monotone" dataKey="bbUpper" stroke="transparent" fill="#64748b" fillOpacity={0.1} />
-          <Line type="monotone" dataKey="close" stroke={CHART_COLORS.price} strokeWidth={3} dot={false} />
-          <Line type="monotone" dataKey="sma20" stroke={CHART_COLORS.sma20} strokeWidth={2} dot={false} />
-          <Line type="monotone" dataKey="sma50" stroke={CHART_COLORS.sma50} strokeWidth={2} dot={false} />
+          <Area
+            type="monotone"
+            dataKey={bollingerRange}
+            name="Bollinger-Band"
+            stroke={CHART_COLORS.bollinger}
+            strokeOpacity={0.4}
+            fill={CHART_COLORS.bollinger}
+            fillOpacity={0.12}
+          />
+          <Line type="monotone" dataKey="close" name="Kurs" stroke={CHART_COLORS.price} strokeWidth={3} dot={false} />
+          <Line type="monotone" dataKey="sma20" name="SMA 20" stroke={CHART_COLORS.sma20} strokeWidth={2} dot={false} />
+          <Line type="monotone" dataKey="sma50" name="SMA 50" stroke={CHART_COLORS.sma50} strokeWidth={2} dot={false} />
         </ComposedChart>
       </ResponsiveContainer>
     </div>
@@ -116,6 +133,7 @@ function Legend() {
       <LegendItem color={BIMATIC_BLUE} label="Kurs" />
       <LegendItem color={CHART_COLORS.sma20} label="SMA 20" />
       <LegendItem color={CHART_COLORS.sma50} label="SMA 50" />
+      <LegendItem color={CHART_COLORS.bollinger} label="Bollinger-Band" />
       <LegendItem color={CHART_COLORS.fibonacci} label="Fibonacci" dashed infoKey="fibonacci" />
       <LegendItem color={CHART_COLORS.support} label="Support" />
       <LegendItem color={CHART_COLORS.resistance} label="Resistance" />

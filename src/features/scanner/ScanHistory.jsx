@@ -19,7 +19,7 @@ export function ScanHistory({ history, threshold, onAnalyze, addToWatchlist, isI
             className={`flex items-center justify-between p-3 rounded-lg transition-colors ${
               stock.bullishPercent >= threshold
                 ? 'bg-green-900/30 border border-green-600'
-                : 'bg-slate-800 hover:bg-slate-750'
+                : 'bg-slate-800 hover:bg-slate-700'
             }`}
           >
             <div className="flex items-center gap-3">

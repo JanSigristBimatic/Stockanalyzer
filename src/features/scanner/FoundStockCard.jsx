@@ -8,7 +8,7 @@ import { formatPrice } from '../../utils/format';
  */
 export function FoundStockCard({ stock, threshold, onAnalyze, addToWatchlist, isInWatchlist }) {
   return (
-    <div className="bg-green-900/30 border-4 border-green-500 rounded-2xl p-6 animate-pulse-once">
+    <div className="bg-green-900/30 border-4 border-green-500 rounded-2xl p-6">
       <div className="flex items-center gap-3 mb-4">
         <CheckCircle2 className="w-10 h-10 text-green-400" />
         <div>
