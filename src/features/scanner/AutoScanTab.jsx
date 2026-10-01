@@ -8,7 +8,7 @@ export function AutoScanTab({ autoScan, onAnalyze, addToWatchlist, isInWatchlist
     scanning, paused, currentSymbol, scannedCount, skippedCount,
     foundStock, scanHistory, scanPeriod, threshold, totalSymbols, progress,
     selectedCategories, categories,
-    startScan, pauseScan, continueScan, resetScan, changeScanPeriod, changeThreshold,
+    startScan, pauseScan, resetScan, changeScanPeriod, changeThreshold,
     toggleCategory, selectAllCategories
   } = autoScan;
 
@@ -134,7 +134,7 @@ export function AutoScanTab({ autoScan, onAnalyze, addToWatchlist, isInWatchlist
 
           {foundStock && (
             <button
-              onClick={continueScan}
+              onClick={startScan}
               className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white text-lg font-bold rounded-xl flex items-center gap-2 transition-colors"
             >
               <SkipForward className="w-5 h-5" />

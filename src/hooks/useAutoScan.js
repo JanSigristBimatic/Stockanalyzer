@@ -1,7 +1,13 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import { analyzeSymbol } from '../services';
 import { toAnalysisSummary } from '../utils/analysis';
-import { SCAN_CATEGORIES, getSymbolsFromCategories, getAllSymbols } from '../constants/autoScan';
+import { SCAN_CATEGORIES, getSymbolsFromCategories } from '../constants/autoScan';
+
+const HISTORY_SIZE = 100;
+// Small delay between symbols to avoid rate limiting
+const REQUEST_DELAY_MS = 400;
+
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function analyzeSummary(symbol, period) {
   const response = await analyzeSymbol(symbol, period, '1d');
@@ -9,13 +15,14 @@ async function analyzeSummary(symbol, period) {
 }
 
 /**
- * Hook for automated stock scanning
- * Scans through a list of symbols until finding one with bullish percentage >= threshold
+ * Hook for automated stock scanning.
+ * Scans the selected symbols until one reaches the bullish threshold. Every run has an id;
+ * pausing or resetting invalidates the running loop, so a stale loop never writes state and
+ * only one scan runs at a time.
  */
 export function useAutoScan() {
   const [scanning, setScanning] = useState(false);
   const [paused, setPaused] = useState(false);
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [currentSymbol, setCurrentSymbol] = useState('');
   const [scannedCount, setScannedCount] = useState(0);
   const [skippedCount, setSkippedCount] = useState(0);
@@ -23,90 +30,81 @@ export function useAutoScan() {
   const [scanHistory, setScanHistory] = useState([]);
   const [scanPeriod, setScanPeriod] = useState('6M');
   const [threshold, setThreshold] = useState(90);
-  const [selectedCategories, setSelectedCategories] = useState(['sp500']); // Default to S&P 500
-  const [activeSymbols, setActiveSymbols] = useState(() => getSymbolsFromCategories(['sp500']));
+  const [selectedCategories, setSelectedCategories] = useState(['sp500']);
 
-  const abortRef = useRef(false);
-  const indexRef = useRef(0);
+  const runIdRef = useRef(0);
+  const nextIndexRef = useRef(0);
+
+  const activeSymbols = useMemo(() => getSymbolsFromCategories(selectedCategories), [selectedCategories]);
 
   /**
-   * Start or continue scanning
+   * Starts a scan, continues after a pause or a find, or starts over after a completed scan
    */
   const startScan = useCallback(async () => {
+    const runId = ++runIdRef.current;
+    const isCurrentRun = () => runId === runIdRef.current;
+
+    if (nextIndexRef.current >= activeSymbols.length) {
+      nextIndexRef.current = 0;
+      setScannedCount(0);
+      setSkippedCount(0);
+      setScanHistory([]);
+    }
     setScanning(true);
     setPaused(false);
-    abortRef.current = false;
+    setFoundStock(null);
 
-    const startIndex = indexRef.current;
-    const symbols = activeSymbols;
-
-    for (let i = startIndex; i < symbols.length; i++) {
-      if (abortRef.current) {
-        setPaused(true);
-        setScanning(false);
-        return;
-      }
-
-      const symbol = symbols[i];
+    while (nextIndexRef.current < activeSymbols.length) {
+      const symbol = activeSymbols[nextIndexRef.current];
       setCurrentSymbol(symbol);
-      setCurrentIndex(i);
-      indexRef.current = i;
 
       const result = await analyzeSummary(symbol, scanPeriod);
+      // A paused or reset run drops its result; continuing rescans this symbol
+      if (!isCurrentRun()) return;
+      nextIndexRef.current += 1;
 
-      if (result) {
+      if (!result) {
+        setSkippedCount(prev => prev + 1);
+      } else {
         setScannedCount(prev => prev + 1);
-        setScanHistory(prev => [result, ...prev].slice(0, 100)); // Keep last 100
-
+        setScanHistory(prev => [result, ...prev].slice(0, HISTORY_SIZE));
         if (result.bullishPercent >= threshold) {
           setFoundStock(result);
           setScanning(false);
-          indexRef.current = i + 1; // Next position for continue
           return;
         }
-      } else {
-        setSkippedCount(prev => prev + 1);
       }
 
-      // Small delay to avoid rate limiting
-      await new Promise(resolve => setTimeout(resolve, 400));
+      await sleep(REQUEST_DELAY_MS);
+      if (!isCurrentRun()) return;
     }
 
-    // Finished all symbols
     setScanning(false);
     setCurrentSymbol('');
-    indexRef.current = 0;
-  }, [scanPeriod, threshold, activeSymbols]);
+  }, [activeSymbols, scanPeriod, threshold]);
 
   /**
-   * Pause the current scan
+   * Pauses the running scan; it can be continued with startScan
    */
   const pauseScan = useCallback(() => {
-    abortRef.current = true;
+    runIdRef.current += 1;
+    setScanning(false);
+    setPaused(true);
   }, []);
 
   /**
-   * Continue scanning after a find
-   */
-  const continueScan = useCallback(() => {
-    setFoundStock(null);
-    startScan();
-  }, [startScan]);
-
-  /**
-   * Reset and start fresh
+   * Stops any running scan and clears all progress
    */
   const resetScan = useCallback(() => {
-    abortRef.current = true;
+    runIdRef.current += 1;
+    nextIndexRef.current = 0;
     setScanning(false);
     setPaused(false);
-    setCurrentIndex(0);
     setCurrentSymbol('');
     setScannedCount(0);
     setSkippedCount(0);
     setFoundStock(null);
     setScanHistory([]);
-    indexRef.current = 0;
   }, []);
 
   /**
@@ -126,50 +124,29 @@ export function useAutoScan() {
   }, [resetScan]);
 
   /**
-   * Toggle a category selection
+   * Toggles a category; at least one category stays selected (resets scan)
    */
   const toggleCategory = useCallback((categoryId) => {
-    setSelectedCategories(prev => {
-      const newCategories = prev.includes(categoryId)
-        ? prev.filter(c => c !== categoryId)
-        : [...prev, categoryId];
+    const nextCategories = selectedCategories.includes(categoryId)
+      ? selectedCategories.filter(id => id !== categoryId)
+      : [...selectedCategories, categoryId];
+    if (nextCategories.length === 0) return;
 
-      // Ensure at least one category is selected
-      if (newCategories.length === 0) return prev;
-
-      // Update active symbols
-      const newSymbols = getSymbolsFromCategories(newCategories);
-      setActiveSymbols(newSymbols);
-
-      return newCategories;
-    });
+    setSelectedCategories(nextCategories);
     resetScan();
-  }, [resetScan]);
+  }, [selectedCategories, resetScan]);
 
   /**
-   * Select all categories
+   * Selects all categories (resets scan)
    */
   const selectAllCategories = useCallback(() => {
-    const allCategoryIds = Object.keys(SCAN_CATEGORIES);
-    setSelectedCategories(allCategoryIds);
-    setActiveSymbols(getAllSymbols());
-    resetScan();
-  }, [resetScan]);
-
-  /**
-   * Clear all and select only one category
-   */
-  const selectOnlyCategory = useCallback((categoryId) => {
-    setSelectedCategories([categoryId]);
-    setActiveSymbols(getSymbolsFromCategories([categoryId]));
+    setSelectedCategories(Object.keys(SCAN_CATEGORIES));
     resetScan();
   }, [resetScan]);
 
   return {
-    // State
     scanning,
     paused,
-    currentIndex,
     currentSymbol,
     scannedCount,
     skippedCount,
@@ -179,18 +156,14 @@ export function useAutoScan() {
     threshold,
     selectedCategories,
     totalSymbols: activeSymbols.length,
-    progress: Math.round((currentIndex / activeSymbols.length) * 100) || 0,
+    progress: Math.round(((scannedCount + skippedCount) / activeSymbols.length) * 100),
     categories: SCAN_CATEGORIES,
-
-    // Actions
     startScan,
     pauseScan,
-    continueScan,
     resetScan,
     changeScanPeriod,
     changeThreshold,
     toggleCategory,
-    selectAllCategories,
-    selectOnlyCategory
+    selectAllCategories
   };
 }
