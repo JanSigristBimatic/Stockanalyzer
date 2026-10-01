@@ -1,44 +1,38 @@
 import { calcEMA } from './movingAverages';
 
 /**
- * Relative Strength Index (RSI)
+ * Relative Strength Index (RSI) with Wilder smoothing
  * @param {Array} data - Array of price data with 'close' property
  * @param {number} period - RSI period (default: 14)
- * @returns {Array} - Array of RSI values (0-100)
+ * @returns {Array} - Array of RSI values (0-100), null until the period is filled
  */
 export function calcRSI(data, period = 14) {
-  const rsi = [];
-  let gains = 0;
-  let losses = 0;
+  let avgGain = 0;
+  let avgLoss = 0;
 
-  for (let i = 0; i < data.length; i++) {
-    if (i === 0) {
-      rsi.push(null);
-      continue;
+  return data.map((bar, i) => {
+    if (i === 0) return null;
+
+    const change = bar.close - data[i - 1].close;
+    const gain = Math.max(change, 0);
+    const loss = Math.max(-change, 0);
+
+    if (i <= period) {
+      // Seed with the simple average of the first `period` changes
+      avgGain += gain / period;
+      avgLoss += loss / period;
+      return i === period ? toRSI(avgGain, avgLoss) : null;
     }
 
-    const change = data[i].close - data[i - 1].close;
-    const gain = change > 0 ? change : 0;
-    const loss = change < 0 ? -change : 0;
+    avgGain = (avgGain * (period - 1) + gain) / period;
+    avgLoss = (avgLoss * (period - 1) + loss) / period;
+    return toRSI(avgGain, avgLoss);
+  });
+}
 
-    if (i < period) {
-      gains += gain;
-      losses += loss;
-      rsi.push(null);
-    } else if (i === period) {
-      gains += gain;
-      losses += loss;
-      const rs = losses === 0 ? 100 : (gains / period) / (losses / period);
-      rsi.push(+(100 - 100 / (1 + rs)).toFixed(2));
-    } else {
-      gains = (gains * (period - 1) + gain) / period;
-      losses = (losses * (period - 1) + loss) / period;
-      const rs = losses === 0 ? 100 : gains / losses;
-      rsi.push(+(100 - 100 / (1 + rs)).toFixed(2));
-    }
-  }
-
-  return rsi;
+function toRSI(avgGain, avgLoss) {
+  if (avgLoss === 0) return avgGain === 0 ? 50 : 100;
+  return 100 - 100 / (1 + avgGain / avgLoss);
 }
 
 /**
