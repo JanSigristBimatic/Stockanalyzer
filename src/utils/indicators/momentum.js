@@ -1,4 +1,4 @@
-import { calcEMA } from './movingAverages';
+import { calcEMA, calcEMAFromValues } from './movingAverages';
 
 /**
  * Relative Strength Index (RSI) with Wilder smoothing
@@ -36,29 +36,17 @@ function toRSI(avgGain, avgLoss) {
 }
 
 /**
- * Moving Average Convergence Divergence (MACD)
+ * Moving Average Convergence Divergence (MACD 12/26/9)
  * @param {Array} data - Array of price data with 'close' property
- * @returns {{macdLine: Array, signalLine: Array, histogram: Array}}
+ * @returns {{macdLine: Array, signalLine: Array, histogram: Array}} - null until each line is warmed up
  */
 export function calcMACD(data) {
   const ema12 = calcEMA(data, 12);
   const ema26 = calcEMA(data, 26);
 
-  const macdLine = ema12.map((v, i) => +(v - ema26[i]).toFixed(4));
-
-  const signalMultiplier = 2 / 10;
-  const signalLine = [];
-
-  macdLine.forEach((val, i) => {
-    if (i === 0) {
-      signalLine.push(val);
-    } else {
-      const newSignal = val * signalMultiplier + signalLine[i - 1] * (1 - signalMultiplier);
-      signalLine.push(+newSignal.toFixed(4));
-    }
-  });
-
-  const histogram = macdLine.map((v, i) => +(v - signalLine[i]).toFixed(4));
+  const macdLine = ema12.map((fast, i) => (fast == null || ema26[i] == null ? null : fast - ema26[i]));
+  const signalLine = calcEMAFromValues(macdLine, 9);
+  const histogram = macdLine.map((macd, i) => (signalLine[i] == null ? null : macd - signalLine[i]));
 
   return { macdLine, signalLine, histogram };
 }
@@ -87,13 +75,12 @@ export function calcStochastic(data, kPeriod = 14, dPeriod = 3) {
     const close = data[i].close;
 
     const k = high === low ? 50 : ((close - low) / (high - low)) * 100;
-    stochK.push(+k.toFixed(2));
+    stochK.push(k);
 
     if (i < kPeriod + dPeriod - 2) {
       stochD.push(null);
     } else {
-      const dValue = stochK.slice(-dPeriod).reduce((sum, val) => sum + (val || 0), 0) / dPeriod;
-      stochD.push(+dValue.toFixed(2));
+      stochD.push(stochK.slice(-dPeriod).reduce((sum, val) => sum + val, 0) / dPeriod);
     }
   }
 

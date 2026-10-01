@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calcRSI, calcStochastic } from './momentum';
+import { calcRSI, calcMACD, calcStochastic } from './momentum';
 
 const toBars = (closes) => closes.map(close => ({ close }));
 const constantRangeBars = (closes) => closes.map(close => ({ close, high: 110, low: 90 }));
@@ -29,6 +29,18 @@ describe('calcRSI', () => {
 
   it('is 100 for a strictly rising series', () => {
     expect(calcRSI(toBars(Array.from({ length: 20 }, (_, i) => 10 + i)))[19]).toBe(100);
+  });
+});
+
+describe('calcMACD', () => {
+  it('equals the EMA lag difference on a linear series', () => {
+    const { macdLine, signalLine, histogram } = calcMACD(toBars(Array.from({ length: 300 }, (_, i) => i)));
+
+    expect(macdLine[24]).toBeNull();
+    expect(macdLine[25]).toBeCloseTo(7, 6);
+    expect(signalLine[32]).toBeNull();
+    expect(signalLine[33]).toBeCloseTo(7, 6);
+    expect(histogram[299]).toBeCloseTo(0, 6);
   });
 });
 

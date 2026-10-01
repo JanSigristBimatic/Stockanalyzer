@@ -13,7 +13,9 @@ describe('calcFibonacci', () => {
 
     expect(high).toBe(200);
     expect(low).toBe(100);
-    expect(levels.map(l => l.price)).toEqual([200, 176.4, 161.8, 150, 138.2, 121.4, 100]);
+    [200, 176.4, 161.8, 150, 138.2, 121.4, 100].forEach((price, i) => {
+      expect(levels[i].price).toBeCloseTo(price, 6);
+    });
   });
 });
 

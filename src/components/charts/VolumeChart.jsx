@@ -2,7 +2,7 @@ import { ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Respons
 import { BarChart3 } from 'lucide-react';
 import { ChartHeader } from '../ui';
 import { BIMATIC_BLUE, CHART_COLORS, TOOLTIP_STYLE } from '../../constants';
-import { reduceChartData } from '../../utils/chartData';
+import { reduceChartData, formatChartValue } from '../../utils/chartData';
 
 /**
  * Volume and OBV (On-Balance Volume) chart
@@ -36,7 +36,7 @@ export function VolumeChart({ data }) {
             tick={{ fill: '#cbd5e1', fontSize: 11 }}
             tickFormatter={(v) => `${(v / 1000000000).toFixed(1)}B`}
           />
-          <Tooltip contentStyle={TOOLTIP_STYLE} />
+          <Tooltip contentStyle={TOOLTIP_STYLE} formatter={formatChartValue} />
 
           <Bar yAxisId="volume" dataKey="volume" fill={BIMATIC_BLUE} fillOpacity={0.5} />
           <Line yAxisId="obv" type="monotone" dataKey="obv" stroke={CHART_COLORS.obv} strokeWidth={2} dot={false} />

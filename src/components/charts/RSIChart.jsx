@@ -2,7 +2,7 @@ import { ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, Respon
 import { Activity } from 'lucide-react';
 import { ChartHeader } from '../ui';
 import { CHART_COLORS, TOOLTIP_STYLE } from '../../constants';
-import { reduceChartData } from '../../utils/chartData';
+import { reduceChartData, formatChartValue } from '../../utils/chartData';
 
 /**
  * RSI (Relative Strength Index) chart
@@ -30,7 +30,7 @@ export function RSIChart({ data }) {
             tick={{ fill: '#cbd5e1', fontSize: 11 }}
             ticks={[0, 30, 50, 70, 100]}
           />
-          <Tooltip contentStyle={TOOLTIP_STYLE} />
+          <Tooltip contentStyle={TOOLTIP_STYLE} formatter={formatChartValue} />
 
           {/* Overbought/Oversold Lines */}
           <ReferenceLine y={70} stroke={CHART_COLORS.resistance} strokeWidth={2} strokeDasharray="4 4" />

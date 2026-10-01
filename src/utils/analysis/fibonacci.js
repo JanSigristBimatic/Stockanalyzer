@@ -24,7 +24,7 @@ export function calcFibonacci(data) {
 
   const levels = FIBONACCI_LEVELS.map(({ level, label }) => ({
     level,
-    price: +(high - diff * level).toFixed(2),
+    price: high - diff * level,
     label
   }));
 

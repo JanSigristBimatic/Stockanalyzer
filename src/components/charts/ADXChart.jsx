@@ -2,7 +2,7 @@ import { ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveCo
 import { Zap } from 'lucide-react';
 import { ChartHeader } from '../ui';
 import { CHART_COLORS, TOOLTIP_STYLE } from '../../constants';
-import { reduceChartData } from '../../utils/chartData';
+import { reduceChartData, formatChartValue } from '../../utils/chartData';
 
 /**
  * ADX (Average Directional Index) trend strength chart
@@ -30,7 +30,7 @@ export function ADXChart({ data }) {
           <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
           <XAxis dataKey="date" tick={{ fill: '#cbd5e1', fontSize: 11 }} />
           <YAxis domain={[0, 60]} tick={{ fill: '#cbd5e1', fontSize: 11 }} />
-          <Tooltip contentStyle={TOOLTIP_STYLE} />
+          <Tooltip contentStyle={TOOLTIP_STYLE} formatter={formatChartValue} />
 
           {/* Trend Strength Thresholds */}
           <ReferenceLine y={20} stroke="#64748b" strokeDasharray="4 4" />

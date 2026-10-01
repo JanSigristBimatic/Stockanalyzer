@@ -2,7 +2,7 @@ import { ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Respons
 import { BarChart3 } from 'lucide-react';
 import { ChartHeader } from '../ui';
 import { BIMATIC_BLUE, CHART_COLORS, TOOLTIP_STYLE } from '../../constants';
-import { reduceChartData } from '../../utils/chartData';
+import { reduceChartData, formatChartValue } from '../../utils/chartData';
 
 /**
  * MACD (Moving Average Convergence Divergence) chart
@@ -26,7 +26,7 @@ export function MACDChart({ data }) {
           <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
           <XAxis dataKey="date" tick={{ fill: '#cbd5e1', fontSize: 11 }} />
           <YAxis tick={{ fill: '#cbd5e1', fontSize: 11 }} />
-          <Tooltip contentStyle={TOOLTIP_STYLE} />
+          <Tooltip contentStyle={TOOLTIP_STYLE} formatter={formatChartValue} />
 
           <ReferenceLine y={0} stroke="#64748b" strokeWidth={2} />
 

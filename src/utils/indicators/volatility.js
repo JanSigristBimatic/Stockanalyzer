@@ -21,9 +21,9 @@ export function calcBollinger(data, period = 20, stdDevMultiplier = 2) {
     const std = Math.sqrt(squaredDiffs / period);
 
     return {
-      upper: +(mean + stdDevMultiplier * std).toFixed(2),
+      upper: mean + stdDevMultiplier * std,
       middle: mean,
-      lower: +(mean - stdDevMultiplier * std).toFixed(2)
+      lower: mean - stdDevMultiplier * std
     };
   });
 }
@@ -56,10 +56,10 @@ export function calcATR(data, period = 14) {
     } else if (i === period) {
       atrValue += trueRange;
       atrValue = atrValue / period;
-      atr.push(+atrValue.toFixed(2));
+      atr.push(atrValue);
     } else {
       atrValue = ((atrValue * (period - 1)) + trueRange) / period;
-      atr.push(+atrValue.toFixed(2));
+      atr.push(atrValue);
     }
   }
 

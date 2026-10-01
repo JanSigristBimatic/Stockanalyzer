@@ -58,20 +58,18 @@ export function calcADX(data, period = 14) {
       const pdi = smoothTR === 0 ? 0 : (smoothPlusDM / smoothTR) * 100;
       const mdi = smoothTR === 0 ? 0 : (smoothMinusDM / smoothTR) * 100;
 
-      plusDI.push(+pdi.toFixed(2));
-      minusDI.push(+mdi.toFixed(2));
+      plusDI.push(pdi);
+      minusDI.push(mdi);
 
       const dxValue = (pdi + mdi) === 0 ? 0 : (Math.abs(pdi - mdi) / (pdi + mdi)) * 100;
-      dx.push(+dxValue.toFixed(2));
+      dx.push(dxValue);
 
       if (i < period * 2 - 1) {
         adx.push(null);
       } else if (i === period * 2 - 1) {
-        const adxValue = dx.slice(period, period * 2).reduce((s, v) => s + v, 0) / period;
-        adx.push(+adxValue.toFixed(2));
+        adx.push(dx.slice(period, period * 2).reduce((s, v) => s + v, 0) / period);
       } else {
-        const adxValue = (adx[i - 1] * (period - 1) + dx[i]) / period;
-        adx.push(+adxValue.toFixed(2));
+        adx.push((adx[i - 1] * (period - 1) + dx[i]) / period);
       }
     }
   }

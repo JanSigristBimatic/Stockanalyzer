@@ -2,7 +2,7 @@ import { ComposedChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveCo
 import { Activity } from 'lucide-react';
 import { ChartHeader } from '../ui';
 import { CHART_COLORS, TOOLTIP_STYLE } from '../../constants';
-import { reduceChartData } from '../../utils/chartData';
+import { reduceChartData, formatChartValue } from '../../utils/chartData';
 
 /**
  * ATR (Average True Range) volatility chart
@@ -25,10 +25,10 @@ export function ATRChart({ data }) {
         <ComposedChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
           <XAxis dataKey="date" tick={{ fill: '#cbd5e1', fontSize: 11 }} />
-          <YAxis tick={{ fill: '#cbd5e1', fontSize: 11 }} tickFormatter={(v) => v.toFixed(2)} />
+          <YAxis tick={{ fill: '#cbd5e1', fontSize: 11 }} tickFormatter={formatChartValue} />
           <Tooltip
             contentStyle={{ ...TOOLTIP_STYLE, border: '2px solid #f97316' }}
-            formatter={(value) => [value?.toFixed(2), 'ATR']}
+            formatter={(value) => [formatChartValue(value), 'ATR']}
           />
           <Area
             type="monotone"

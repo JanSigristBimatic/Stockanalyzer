@@ -14,3 +14,14 @@ export function reduceChartData(data, maxPoints = DEFAULT_MAX_POINTS) {
 
   return reduced;
 }
+
+/**
+ * Formats indicator values for chart tooltips and axes; small values keep more decimals
+ * @param {*} value - Chart value
+ * @returns {*} - Formatted string for numbers, the input otherwise
+ */
+export function formatChartValue(value) {
+  if (typeof value !== 'number' || Number.isNaN(value)) return value;
+  const maximumFractionDigits = Math.abs(value) < 1 ? 4 : 2;
+  return value.toLocaleString('de-CH', { maximumFractionDigits });
+}

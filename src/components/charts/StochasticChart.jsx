@@ -2,7 +2,7 @@ import { ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, Respon
 import { Activity } from 'lucide-react';
 import { ChartHeader } from '../ui';
 import { CHART_COLORS, TOOLTIP_STYLE } from '../../constants';
-import { reduceChartData } from '../../utils/chartData';
+import { reduceChartData, formatChartValue } from '../../utils/chartData';
 
 /**
  * Stochastic Oscillator chart
@@ -30,7 +30,7 @@ export function StochasticChart({ data }) {
             tick={{ fill: '#cbd5e1', fontSize: 11 }}
             ticks={[0, 20, 50, 80, 100]}
           />
-          <Tooltip contentStyle={TOOLTIP_STYLE} />
+          <Tooltip contentStyle={TOOLTIP_STYLE} formatter={formatChartValue} />
 
           {/* Overbought/Oversold Lines */}
           <ReferenceLine y={80} stroke={CHART_COLORS.resistance} strokeDasharray="4 4" />
