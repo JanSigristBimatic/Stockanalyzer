@@ -16,19 +16,14 @@ const PREFETCH_SECONDS = {
   '1wk': 60 * 7 * DAY_SECONDS
 };
 
-const getProxyUrl = () => {
-  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
-    return '/api/yahoo?url=';
-  }
-  return 'http://localhost:3001/api/yahoo?url=';
-};
+// Served by api/yahoo.js on Vercel and by the Vite dev server locally
+const PROXY_URL = '/api/yahoo?url=';
 
 async function fetchWithProxy(url, timeout = 10000) {
-  const proxyUrl = getProxyUrl();
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
   try {
-    const response = await fetch(proxyUrl + encodeURIComponent(url), { signal: controller.signal });
+    const response = await fetch(PROXY_URL + encodeURIComponent(url), { signal: controller.signal });
     return { response, error: null };
   } catch (error) {
     console.error('Proxy fetch failed:', error.message);

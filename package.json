@@ -8,9 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "lint": "eslint .",
-    "proxy": "cd server && npm start",
-    "proxy:install": "cd server && npm install"
+    "lint": "eslint ."
   },
   "dependencies": {
     "lucide-react": "^0.468.0",
