@@ -1,10 +1,7 @@
 export {
-  checkSymbolExists,
   searchSymbolVariants,
   searchSymbols,
   fetchStockData,
-  fetchQuoteSummary,
-  getTimePeriod,
-  isMarketOpen
+  fetchQuoteSummary
 } from './yahooFinance';
-export { analyzeSymbol } from './analyzeSymbol';
+export { analyzeSymbol, analyzeSymbolSummary } from './analyzeSymbol';

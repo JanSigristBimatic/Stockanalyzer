@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { fetchStockData, fetchQuoteSummary, analyzeSymbol } from '../services';
-import { toAnalysisSummary } from '../utils/analysis';
+import { fetchStockData, fetchQuoteSummary, analyzeSymbolSummary } from '../services';
 import { mapWithConcurrency } from '../utils/async';
 
 const WATCHLIST_KEY = 'stockanalyzer_watchlist';
@@ -42,11 +41,6 @@ async function loadQuote(symbol) {
     priceHint: chart.priceHint,
     marketCap: quoteSummary?.fundamentals.marketCap ?? null
   };
-}
-
-async function analyzeSummary(symbol) {
-  const response = await analyzeSymbol(symbol, ANALYZE_ALL_PERIOD, '1d');
-  return response.error ? null : toAnalysisSummary(symbol, response.analysis, response.meta);
 }
 
 /**
@@ -200,7 +194,7 @@ export function useWatchlist() {
 
     await mapWithConcurrency(watchlist, MAX_PARALLEL_REQUESTS, async (item) => {
       if (!isCurrentRun()) return;
-      const result = await analyzeSummary(item.symbol);
+      const result = await analyzeSymbolSummary(item.symbol, ANALYZE_ALL_PERIOD);
       if (!isCurrentRun()) return;
 
       completed += 1;

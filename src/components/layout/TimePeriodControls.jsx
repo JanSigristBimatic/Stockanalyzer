@@ -1,7 +1,7 @@
 import { Clock, Loader2 } from 'lucide-react';
 import { BIMATIC_BLUE, BIMATIC_LIGHT, CHART_INTERVALS, PERIOD_INTERVALS } from '../../constants';
 
-const PERIODS = ['1M', '3M', '6M', '1Y', '2Y', '5Y'];
+const PERIODS = Object.keys(PERIOD_INTERVALS);
 
 export function TimePeriodControls({ timePeriod, interval, loading, onPeriodChange, onIntervalChange }) {
   const intervals = CHART_INTERVALS.filter(({ value }) => PERIOD_INTERVALS[timePeriod].includes(value));

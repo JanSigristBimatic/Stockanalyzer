@@ -66,7 +66,7 @@ export async function proxyYahoo(rawUrl) {
     let response = await requestYahoo(url, auth);
 
     if (response.status === 401 && auth.crumb) {
-      auth = await getYahooAuth({ refresh: true });
+      auth = await refreshYahooAuth();
       response = await requestYahoo(url, auth);
     }
 
@@ -83,13 +83,16 @@ export async function proxyYahoo(rawUrl) {
 }
 
 /**
- * Yahoo requires a crumb plus the matching cookie for quoteSummary requests
+ * Yahoo requires a crumb plus the matching cookie for quoteSummary requests; both are cached
  */
-async function getYahooAuth({ refresh = false } = {}) {
-  if (!refresh && authCache.crumb && Date.now() < authCache.expires) {
+async function getYahooAuth() {
+  if (authCache.crumb && Date.now() < authCache.expires) {
     return authCache;
   }
+  return refreshYahooAuth();
+}
 
+async function refreshYahooAuth() {
   try {
     const initResponse = await fetch('https://fc.yahoo.com', { headers: { 'User-Agent': USER_AGENT } });
     // Only the name=value part of each Set-Cookie header belongs into a Cookie header

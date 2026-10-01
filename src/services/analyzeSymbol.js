@@ -1,5 +1,5 @@
 import { fetchStockData, fetchQuoteSummary, isMarketOpen } from './yahooFinance';
-import { analyzeStock } from '../utils/analysis/analyzeStock';
+import { analyzeStock, toAnalysisSummary } from '../utils/analysis/analyzeStock';
 
 /**
  * Loads chart and quoteSummary in parallel and runs the shared analysis.
@@ -34,8 +34,18 @@ export async function analyzeSymbol(symbol, period = '6M', interval = '1d') {
       currency: chart.currency,
       exchange: chart.exchange,
       priceHint: chart.priceHint,
-      instrumentType: chart.instrumentType,
       regularMarketTime: chart.regularMarketTime
     }
   };
+}
+
+/**
+ * Analyzes a symbol on daily bars and condenses the result into a row for the watchlist and the scanner
+ * @param {string} symbol - Yahoo symbol
+ * @param {string} period - Display period
+ * @returns {Promise<Object|null>} - null if the symbol could not be loaded
+ */
+export async function analyzeSymbolSummary(symbol, period) {
+  const response = await analyzeSymbol(symbol, period, '1d');
+  return response.error ? null : toAnalysisSummary(symbol, response.analysis, response.meta);
 }

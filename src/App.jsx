@@ -68,7 +68,7 @@ export default function App() {
           <ExchangeSuggestions suggestions={suggestions} onSelect={selectSymbol} />
         )}
 
-        <TabNavigation activeTab={activeTab} setActiveTab={changeTab} watchlistCount={watchlist.length} />
+        <TabNavigation activeTab={activeTab} onTabChange={changeTab} watchlistCount={watchlist.length} />
 
         {result && isDataTab && <DataSourceBadge meta={result.meta} />}
 

@@ -1,6 +1,5 @@
 import { useState, useCallback, useRef, useMemo } from 'react';
-import { analyzeSymbol } from '../services';
-import { toAnalysisSummary } from '../utils/analysis';
+import { analyzeSymbolSummary } from '../services';
 import { SCAN_CATEGORIES, getSymbolsFromCategories } from '../constants/autoScan';
 
 const HISTORY_SIZE = 100;
@@ -8,11 +7,6 @@ const HISTORY_SIZE = 100;
 const REQUEST_DELAY_MS = 400;
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-async function analyzeSummary(symbol, period) {
-  const response = await analyzeSymbol(symbol, period, '1d');
-  return response.error ? null : toAnalysisSummary(symbol, response.analysis, response.meta);
-}
 
 /**
  * Hook for automated stock scanning.
@@ -58,7 +52,7 @@ export function useAutoScan() {
       const symbol = activeSymbols[nextIndexRef.current];
       setCurrentSymbol(symbol);
 
-      const result = await analyzeSummary(symbol, scanPeriod);
+      const result = await analyzeSymbolSummary(symbol, scanPeriod);
       // A paused or reset run drops its result; continuing rescans this symbol
       if (!isCurrentRun()) return;
       nextIndexRef.current += 1;

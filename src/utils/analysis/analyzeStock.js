@@ -55,12 +55,9 @@ export function toAnalysisSummary(symbol, { indicators, verdict }, meta) {
     bearishPercent: verdict.bearishPercent,
     verdict: verdict.verdict,
     verdictType: verdict.verdictType,
-    recommendation: verdict.recommendation,
-    signals: verdict.signals,
     currency: meta.currency,
     exchange: meta.exchange,
     priceHint: meta.priceHint,
-    rsi: indicators.lastRSI,
     trend: indicators.shortTrend,
     macdSignal: indicators.macdSignal
   };
