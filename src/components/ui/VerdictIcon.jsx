@@ -1,4 +1,3 @@
-import React from 'react';
 import { TrendingUp, TrendingDown, CheckCircle, XCircle, Scale } from 'lucide-react';
 
 /**

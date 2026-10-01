@@ -1,4 +1,3 @@
-import React from 'react';
 import { BookOpen, ChevronDown, ChevronUp } from 'lucide-react';
 import { BIMATIC_BLUE, BIMATIC_LIGHT } from '../../constants';
 

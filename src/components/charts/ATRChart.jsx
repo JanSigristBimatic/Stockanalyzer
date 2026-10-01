@@ -1,4 +1,3 @@
-import React from 'react';
 import { ComposedChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Activity } from 'lucide-react';
 import { ChartHeader } from '../ui';

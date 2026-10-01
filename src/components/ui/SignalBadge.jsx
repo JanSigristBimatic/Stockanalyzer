@@ -1,4 +1,3 @@
-import React from 'react';
 
 /**
  * Signal type to CSS class mapping

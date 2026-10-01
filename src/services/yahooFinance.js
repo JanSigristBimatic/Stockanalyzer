@@ -77,7 +77,7 @@ export async function searchSymbolVariants(baseSymbol) {
 }
 
 export async function fetchStockData(symbol, period = '6M', interval = '1d') {
-  const { period1, period2, prefetchTime } = getTimePeriod(period, interval);
+  const { period1, period2 } = getTimePeriod(period, interval);
   const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?period1=${period1}&period2=${period2}&interval=${interval}&includePrePost=false`;
   const { response, error } = await fetchWithProxy(yahooUrl);
   if (!response) {

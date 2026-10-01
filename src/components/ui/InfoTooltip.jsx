@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { HelpCircle, XCircle } from 'lucide-react';
 import { BIMATIC_BLUE } from '../../constants';
 

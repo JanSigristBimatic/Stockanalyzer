@@ -1,4 +1,3 @@
-import React from 'react';
 import { ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { BarChart3 } from 'lucide-react';
 import { ChartHeader } from '../ui';
