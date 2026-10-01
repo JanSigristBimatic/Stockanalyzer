@@ -1,6 +1,6 @@
 import { ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { BarChart3 } from 'lucide-react';
-import { ChartHeader } from '../ui';
+import { ChartHeader } from '../../components/ui';
 import { BIMATIC_BLUE, CHART_COLORS, TOOLTIP_STYLE } from '../../constants';
 import { reduceChartData, formatChartValue } from '../../utils/chartData';
 

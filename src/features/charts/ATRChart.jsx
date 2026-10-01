@@ -1,6 +1,6 @@
 import { ComposedChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Activity } from 'lucide-react';
-import { ChartHeader } from '../ui';
+import { ChartHeader } from '../../components/ui';
 import { CHART_COLORS, TOOLTIP_STYLE } from '../../constants';
 import { reduceChartData, formatChartValue } from '../../utils/chartData';
 
