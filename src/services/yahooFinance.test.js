@@ -60,6 +60,52 @@ describe('parseChartResponse', () => {
     expect(data.every(bar => bar.high != null)).toBe(true);
   });
 
+  it('drops bars with zero high or low', () => {
+    const json = chartJson({ high: (i) => (i === 5 ? 0 : 1) });
+    expect(parseChartResponse(json, 200, OPTIONS).data).toHaveLength(29);
+  });
+
+  describe('latest bar without close', () => {
+    // Bar 29 starts at 1_000_000 + 29 days; Yahoo leaves its close empty between sessions
+    const lastBarStart = 1_000_000 + 29 * 86400;
+    const withEmptyLastClose = (meta) => {
+      const json = chartJson({ meta });
+      const quote = json.chart.result[0].indicators.quote[0];
+      quote.close[29] = null;
+      return json;
+    };
+
+    it('takes the close from the regular market price of that session', () => {
+      const json = withEmptyLastClose({ regularMarketPrice: 0.9335, regularMarketTime: lastBarStart + 8 * 3600 });
+      const { data } = parseChartResponse(json, 200, OPTIONS);
+      expect(data).toHaveLength(30);
+      expect(data[29].close).toBe(0.9335);
+      expect(data[29].high).toBeCloseTo(0.9339, 10);
+      expect(data[29].low).toBeCloseTo(0.9319, 10);
+    });
+
+    it('widens high and low to include that price', () => {
+      const json = withEmptyLastClose({ regularMarketPrice: 0.95, regularMarketTime: lastBarStart + 8 * 3600 });
+      const bar = parseChartResponse(json, 200, OPTIONS).data[29];
+      expect(bar.high).toBe(0.95);
+    });
+
+    it('uses a flat bar at that price when high and low are missing as well', () => {
+      const json = withEmptyLastClose({ regularMarketPrice: 0.9335, regularMarketTime: lastBarStart + 8 * 3600 });
+      const quote = json.chart.result[0].indicators.quote[0];
+      quote.open[29] = 0;
+      quote.high[29] = 0;
+      quote.low[29] = 0;
+      expect(parseChartResponse(json, 200, OPTIONS).data[29])
+        .toMatchObject({ open: 0.9335, high: 0.9335, low: 0.9335, close: 0.9335 });
+    });
+
+    it('drops the bar when the market price belongs to a later session', () => {
+      const json = withEmptyLastClose({ regularMarketPrice: 0.9335, regularMarketTime: lastBarStart + 30 * 3600 });
+      expect(parseChartResponse(json, 200, OPTIONS).data).toHaveLength(29);
+    });
+  });
+
   it('passes the chart meta data through', () => {
     const result = parseChartResponse(chartJson(), 200, OPTIONS);
     expect(result).toMatchObject({

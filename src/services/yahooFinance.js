@@ -4,6 +4,7 @@ const YAHOO_API = 'https://query1.finance.yahoo.com';
 const DAY_SECONDS = 24 * 60 * 60;
 const MIN_BARS = 20;
 const INTRADAY_INTERVALS = ['15m', '1h'];
+const INTERVAL_SECONDS = { '15m': 15 * 60, '1h': 60 * 60, '1d': DAY_SECONDS, '1wk': 7 * DAY_SECONDS };
 const LONG_PERIODS = ['6M', '1Y', '2Y', '5Y'];
 const QUOTE_SUMMARY_MODULES = 'defaultKeyStatistics,financialData,summaryDetail,assetProfile,price,calendarEvents,recommendationTrend';
 const NEWS_COUNT = 8;
@@ -173,28 +174,29 @@ export function parseChartResponse(json, status, { period, interval, displayCuto
     return { error: { type: 'symbol', message: 'No data available' } };
   }
 
-  // Bars without high or low would distort ATR, ADX, Stochastic and Fibonacci
-  const data = result.timestamp
-    .map((timestamp, i) => {
-      const date = new Date(timestamp * 1000);
-      return {
-        date: formatBarDate(date, period, interval),
-        fullDate: date,
-        timestamp,
-        open: quote.open[i] ?? null,
-        high: quote.high[i],
-        low: quote.low[i],
-        close: quote.close[i],
-        volume: quote.volume[i] ?? 0
-      };
-    })
-    .filter(bar => bar.close != null && bar.high != null && bar.low != null);
+  const { meta } = result;
+  const bars = result.timestamp.map((timestamp, i) => {
+    const date = new Date(timestamp * 1000);
+    return {
+      date: formatBarDate(date, period, interval),
+      fullDate: date,
+      timestamp,
+      open: quote.open[i] ?? null,
+      high: quote.high[i],
+      low: quote.low[i],
+      close: quote.close[i],
+      volume: quote.volume[i] ?? 0
+    };
+  });
+
+  // Yahoo marks missing prices with null or 0; such bars would distort ATR, ADX, Stochastic and Fibonacci
+  const data = completeLatestBar(bars, meta, INTERVAL_SECONDS[interval])
+    .filter(bar => bar.close > 0 && bar.high > 0 && bar.low > 0);
 
   if (data.length < MIN_BARS) {
     return { error: { type: 'symbol', message: 'Insufficient data' } };
   }
 
-  const { meta } = result;
   return {
     data,
     prefetchCount: data.filter(bar => bar.timestamp < displayCutoff).length,
@@ -205,6 +207,28 @@ export function parseChartResponse(json, status, { period, interval, displayCuto
     regularMarketTime: meta.regularMarketTime,
     tradingPeriod: meta.currentTradingPeriod?.regular ?? null
   };
+}
+
+/**
+ * Between sessions Yahoo leaves the close of the latest bar empty for some exchanges such as SIX,
+ * Xetra and London, while the chart meta already carries the last price of that session
+ */
+function completeLatestBar(bars, meta, intervalSeconds) {
+  const latest = bars.at(-1);
+  if (!latest || latest.close != null) return bars;
+
+  const price = meta.regularMarketPrice;
+  const isPriceOfLatestBar = meta.regularMarketTime >= latest.timestamp
+    && meta.regularMarketTime < latest.timestamp + intervalSeconds;
+  if (!(price > 0) || !isPriceOfLatestBar) return bars;
+
+  // London also reports high and low as 0. A flat bar at the last price keeps the close-based
+  // indicators current and stays within the true range of the session.
+  const hasRange = latest.high > 0 && latest.low > 0;
+  const completed = hasRange
+    ? { ...latest, close: price, high: Math.max(latest.high, price), low: Math.min(latest.low, price) }
+    : { ...latest, open: price, high: price, low: price, close: price };
+  return [...bars.slice(0, -1), completed];
 }
 
 function formatBarDate(date, period, interval) {
