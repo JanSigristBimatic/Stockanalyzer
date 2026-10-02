@@ -8,10 +8,10 @@ export function TimePeriodControls({ timePeriod, interval, loading, onPeriodChan
 
   return (
     <div className="flex flex-wrap items-center gap-4 mb-6">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Clock className="w-5 h-5 text-slate-400" />
         <span className="text-slate-300 font-semibold">Zeitraum:</span>
-        <div className="flex gap-1">
+        <div className="flex flex-wrap gap-1">
           {PERIODS.map(period => (
             <button
               key={period}
@@ -29,9 +29,9 @@ export function TimePeriodControls({ timePeriod, interval, loading, onPeriodChan
       </div>
 
       {intervals.length > 1 && (
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="text-slate-300 font-semibold">Intervall:</span>
-          <div className="flex gap-1">
+          <div className="flex flex-wrap gap-1">
             {intervals.map(({ value, label }) => (
               <button
                 key={value}

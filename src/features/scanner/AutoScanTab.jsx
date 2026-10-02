@@ -65,10 +65,10 @@ export function AutoScanTab({ autoScan, onAnalyze, addToWatchlist, isInWatchlist
 
         {/* Settings */}
         <div className="flex flex-wrap gap-4 mb-4">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Clock className="w-5 h-5 text-slate-400" />
             <span className="text-slate-300 font-semibold">Zeitraum:</span>
-            <div className="flex gap-1">
+            <div className="flex flex-wrap gap-1">
               {AUTO_SCAN_PERIODS.map(({ value, label }) => (
                 <button
                   key={value}
@@ -87,10 +87,10 @@ export function AutoScanTab({ autoScan, onAnalyze, addToWatchlist, isInWatchlist
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Target className="w-5 h-5 text-slate-400" />
             <span className="text-slate-300 font-semibold">Min. Bullish:</span>
-            <div className="flex gap-1">
+            <div className="flex flex-wrap gap-1">
               {BULLISH_THRESHOLDS.map(({ value, label }) => (
                 <button
                   key={value}
