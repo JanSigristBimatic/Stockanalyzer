@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { useStockAnalysis, useWatchlist, useAutoScan } from './hooks';
+import { useState, useEffect, useRef } from 'react';
+import { useStockAnalysis, useWatchlist, useAutoScan, useUrlSync } from './hooks';
+import { readUrlState } from './utils/urlState';
 import { Header } from './components/layout/Header';
 import { TabNavigation } from './components/layout/TabNavigation';
 import { DataSourceBadge } from './components/layout/DataSourceBadge';
@@ -22,13 +23,14 @@ const TIME_CONTROLLED_TABS = ['analyse', 'charts'];
  * Provides technical analysis with Fibonacci, Support/Resistance, and automated trading verdicts
  */
 export default function App() {
-  const [activeTab, setActiveTab] = useState('analyse');
+  const [initialUrlState] = useState(() => readUrlState(window.location.search));
+  const [activeTab, setActiveTab] = useState(initialUrlState.tab);
   const [expandedCards, setExpandedCards] = useState({});
 
   const {
     symbol, result, timePeriod, interval, loading, error, suggestions,
     search, selectSymbol, changePeriod, changeInterval
-  } = useStockAnalysis();
+  } = useStockAnalysis(initialUrlState);
 
   const {
     watchlist, quotes, loadingSymbols, failedSymbols, lastRefresh,
@@ -44,6 +46,32 @@ export default function App() {
     setActiveTab(tab);
     if (tab === 'watchlist') refreshIfStale();
   };
+
+  // A watchlist opened by link loads its quotes like one opened by click
+  const isWatchlistOpenedByLinkRef = useRef(initialUrlState.tab === 'watchlist');
+  useEffect(() => {
+    if (!isWatchlistOpenedByLinkRef.current) return;
+    isWatchlistOpenedByLinkRef.current = false;
+    refreshIfStale();
+  }, [refreshIfStale]);
+
+  const navigateTo = (urlState) => {
+    changeTab(urlState.tab);
+    const isShown = !loading && result?.symbol === urlState.symbol
+      && timePeriod === urlState.period && interval === urlState.interval;
+    if (urlState.symbol && !isShown) {
+      selectSymbol(urlState.symbol, { period: urlState.period, interval: urlState.interval });
+    }
+  };
+
+  useUrlSync({
+    symbol: result?.symbol ?? null,
+    period: timePeriod,
+    interval,
+    tab: activeTab,
+    isLoading: loading,
+    onNavigate: navigateTo
+  });
 
   const toggleCard = (key) => {
     setExpandedCards(prev => ({ ...prev, [key]: !prev[key] }));

@@ -53,3 +53,5 @@ export const PERIOD_INTERVALS = {
   '2Y': ['1d'],
   '5Y': ['1wk'],
 };
+
+export const DEFAULT_PERIOD = '6M';

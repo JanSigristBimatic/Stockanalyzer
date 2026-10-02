@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { analyzeSymbol, searchSymbolVariants } from '../services';
 import { PERIOD_INTERVALS } from '../constants';
 
@@ -21,16 +21,19 @@ function getNotFoundMessage(symbol) {
 /**
  * Loads and analyzes the selected stock. Only the latest request may update the state, and a
  * failed request keeps the data on screen so the error can be shown above it.
+ * @param {{symbol: string|null, period: string, interval: string}} initialRequest - e.g. from a deep link;
+ *   the symbol is loaded once on mount
  */
-export function useStockAnalysis() {
-  const [symbol, setSymbol] = useState('');
+export function useStockAnalysis(initialRequest) {
+  const [symbol, setSymbol] = useState(initialRequest.symbol ?? '');
   const [result, setResult] = useState(null);
-  const [timePeriod, setTimePeriod] = useState('6M');
-  const [interval, setInterval] = useState('1d');
-  const [loading, setLoading] = useState(false);
+  const [timePeriod, setTimePeriod] = useState(initialRequest.period);
+  const [interval, setInterval] = useState(initialRequest.interval);
+  const [loading, setLoading] = useState(Boolean(initialRequest.symbol));
   const [error, setError] = useState(null);
   const [suggestions, setSuggestions] = useState([]);
   const requestIdRef = useRef(0);
+  const pendingInitialSymbolRef = useRef(initialRequest.symbol);
 
   const startRequest = useCallback((requestedSymbol) => {
     requestIdRef.current += 1;
@@ -54,19 +57,29 @@ export function useStockAnalysis() {
   }, []);
 
   /**
-   * Opens a known symbol, e.g. from the exchange suggestions, the watchlist or the scanner
+   * Opens a known symbol, e.g. from the exchange suggestions, the watchlist, the scanner or the URL.
+   * Without options the current period and interval are kept; options must be a valid combination.
    */
-  const selectSymbol = useCallback(async (selectedSymbol) => {
+  const selectSymbol = useCallback(async (selectedSymbol, { period = timePeriod, interval: barInterval = interval } = {}) => {
     const requestId = startRequest(selectedSymbol);
-    const response = await analyzeSymbol(selectedSymbol, timePeriod, interval);
+    const response = await analyzeSymbol(selectedSymbol, period, barInterval);
     if (!isLatestRequest(requestId)) return;
 
     if (response.error) {
       showError(response.error.type === 'symbol' ? getNotFoundMessage(selectedSymbol) : getErrorMessage(response.error));
       return;
     }
+    setTimePeriod(period);
+    setInterval(barInterval);
     showResult(selectedSymbol, response);
   }, [timePeriod, interval, startRequest, isLatestRequest, showError, showResult]);
+
+  useEffect(() => {
+    const initialSymbol = pendingInitialSymbolRef.current;
+    if (!initialSymbol) return;
+    pendingInitialSymbolRef.current = null;
+    selectSymbol(initialSymbol);
+  }, [selectSymbol]);
 
   /**
    * Searches the entered symbol; unknown symbols are looked up on other exchanges

@@ -4,3 +4,4 @@ export { useAutoScan } from './useAutoScan';
 export { useSymbolAutocomplete } from './useSymbolAutocomplete';
 export { useExchangeRate } from './useExchangeRate';
 export { useNews } from './useNews';
+export { useUrlSync } from './useUrlSync';
