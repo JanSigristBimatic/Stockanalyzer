@@ -521,8 +521,8 @@ Kaufe nahe Support mit Stop-Loss darunter. Verkaufe nahe Resistance oder warte a
 **Wie lesen?**
 - Kurs über SMA = Aufwärtstrend
 - Kurs unter SMA = Abwärtstrend
-- SMA 20 über SMA 50 = Bullish (Golden Cross wenn sie sich kreuzen)
-- SMA 20 unter SMA 50 = Bearish (Death Cross wenn sie sich kreuzen)
+- SMA 20 über SMA 50 = kurzfristig Bullish
+- SMA 20 unter SMA 50 = kurzfristig Bearish
 
 **Wichtige Signale:**
 1. Golden Cross: SMA 50 kreuzt SMA 200 von unten = starkes Kaufsignal
@@ -531,6 +531,23 @@ Kaufe nahe Support mit Stop-Loss darunter. Verkaufe nahe Resistance oder warte a
 
 **Tipp:**
 Je länger der SMA-Zeitraum, desto stärker ist das Signal, aber desto später kommt es. Nutze mehrere SMAs für Bestätigung.`
+  },
+  sma200: {
+    title: 'SMA 200 & Golden/Death Cross',
+    short: 'Der Durchschnitt der letzten 200 Kerzen zeigt den langfristigen Trend. Kreuzt der SMA 50 ihn nach oben, heisst das Golden Cross, nach unten Death Cross.',
+    full: `Der SMA 200 ist die meistbeachtete Linie für den langfristigen Trend.
+
+**Wie lesen?**
+• **Kurs über SMA 200**: Langfristiger Aufwärtstrend, Rücksetzer werden oft gekauft
+• **Kurs unter SMA 200**: Langfristiger Abwärtstrend, Erholungen scheitern oft an der Linie
+• **Abstand in Prozent**: Je weiter der Kurs entfernt ist, desto überdehnter ist die Bewegung
+
+**Golden Cross und Death Cross:**
+• **Golden Cross**: SMA 50 kreuzt den SMA 200 von unten nach oben, gilt als Beginn eines Aufwärtstrends
+• **Death Cross**: SMA 50 kreuzt den SMA 200 von oben nach unten, gilt als Warnsignal
+
+**Tipp:**
+Kreuzungen sind nachlaufende Signale. Sie bestätigen einen Trend, der schon eine Weile läuft, und eignen sich zur Einordnung, nicht als alleiniger Einstiegszeitpunkt.`
   },
   atr: {
     title: 'ATR (Average True Range)',

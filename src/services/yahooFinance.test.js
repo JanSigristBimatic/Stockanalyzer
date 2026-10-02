@@ -126,6 +126,6 @@ describe('getTimePeriod', () => {
   it('requests the display period plus a prefetch for indicator warm-up', () => {
     const { period1, period2, displayCutoff } = getTimePeriod('6M', '1d');
     expect(period2 - displayCutoff).toBe(TIME_PERIODS['6M']);
-    expect(displayCutoff - period1).toBe(80 * 86400);
+    expect(displayCutoff - period1).toBe(300 * 86400);
   });
 });

@@ -7,13 +7,13 @@ const INTRADAY_INTERVALS = ['15m', '1h'];
 const LONG_PERIODS = ['6M', '1Y', '2Y', '5Y'];
 const QUOTE_SUMMARY_MODULES = 'defaultKeyStatistics,financialData,summaryDetail,assetProfile,price';
 
-// Calendar time that covers at least ~55 bars before the display period (SMA 50 warm-up),
-// including nights, weekends and holidays
+// Calendar time that covers at least ~210 bars before the display period (SMA 200 warm-up),
+// including nights, weekends and holidays. 15m stays within Yahoo's 60-day limit for 1M.
 const PREFETCH_SECONDS = {
-  '15m': 5 * DAY_SECONDS,
-  '1h': 14 * DAY_SECONDS,
-  '1d': 80 * DAY_SECONDS,
-  '1wk': 60 * 7 * DAY_SECONDS
+  '15m': 14 * DAY_SECONDS,
+  '1h': 45 * DAY_SECONDS,
+  '1d': 300 * DAY_SECONDS,
+  '1wk': 210 * 7 * DAY_SECONDS
 };
 
 // Served by api/yahoo.js on Vercel and by the Vite dev server locally

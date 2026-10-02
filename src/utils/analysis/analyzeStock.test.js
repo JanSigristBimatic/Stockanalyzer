@@ -45,6 +45,21 @@ describe('analyzeStock', () => {
     expect(falling.indicators.volumeData.obvTrend).toBe('falling');
   });
 
+  it('warms up SMA 200 on a long prefetch and measures the distance to it', () => {
+    const { chartData, indicators } = analyzeStock(makeBars(300), { prefetchCount: 200 });
+
+    expect(chartData[0].sma200).not.toBeNull();
+    expect(indicators.sma200Distance).toBeCloseTo(((indicators.lastPrice - indicators.sma200) / indicators.sma200) * 100, 10);
+  });
+
+  it('reports the last golden or death cross with its date', () => {
+    const fallingThenRising = (i) => (i < 220 ? 300 - i : 80 + (i - 220) * 3);
+    const { indicators } = analyzeStock(makeBars(400, { close: fallingThenRising }), { prefetchCount: 200 });
+
+    expect(indicators.maCross.type).toBe('golden');
+    expect(indicators.maCross.timestamp).toBeGreaterThan(220);
+  });
+
   it('takes the daily change from the options', () => {
     expect(analyzeStock(makeBars(60), { dailyChangePercent: -0.81 }).indicators.priceChange).toBe(-0.81);
   });

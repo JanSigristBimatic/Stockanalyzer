@@ -121,6 +121,7 @@ export function PriceChart({ data, fibonacci, supportResistance, currency, price
           <Line type="monotone" dataKey="close" name="Kurs" stroke={CHART_COLORS.price} strokeWidth={3} dot={false} />
           <Line type="monotone" dataKey="sma20" name="SMA 20" stroke={CHART_COLORS.sma20} strokeWidth={2} dot={false} />
           <Line type="monotone" dataKey="sma50" name="SMA 50" stroke={CHART_COLORS.sma50} strokeWidth={2} dot={false} />
+          <Line type="monotone" dataKey="sma200" name="SMA 200" stroke={CHART_COLORS.sma200} strokeWidth={2} dot={false} />
         </ComposedChart>
       </ResponsiveContainer>
     </div>
@@ -133,6 +134,7 @@ function Legend() {
       <LegendItem color={BIMATIC_BLUE} label="Kurs" />
       <LegendItem color={CHART_COLORS.sma20} label="SMA 20" />
       <LegendItem color={CHART_COLORS.sma50} label="SMA 50" />
+      <LegendItem color={CHART_COLORS.sma200} label="SMA 200" />
       <LegendItem color={CHART_COLORS.bollinger} label="Bollinger-Band" />
       <LegendItem color={CHART_COLORS.fibonacci} label="Fibonacci" dashed infoKey="fibonacci" />
       <LegendItem color={CHART_COLORS.support} label="Support" />

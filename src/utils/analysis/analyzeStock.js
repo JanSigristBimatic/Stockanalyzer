@@ -2,6 +2,7 @@ import { calcSMA, calcRSI, calcMACD, calcBollinger, calcOBV, calcATR, calcStocha
 import { calcFibonacci } from './fibonacci';
 import { calcSupportResistance } from './supportResistance';
 import { generateVerdict } from './verdict';
+import { findLastCrossover } from './crossover';
 
 const VOLUME_AVERAGE_BARS = 20;
 const PRICE_DIRECTION_BARS = 5;
@@ -37,7 +38,7 @@ export function analyzeStock(bars, {
   const displayBars = bars.slice(prefetchCount);
   const fibonacci = calcFibonacci(displayBars);
   const supportResistance = calcSupportResistance(displayBars);
-  const indicators = buildSnapshot(series, displayBars, { dailyChangePercent, lastBarComplete });
+  const indicators = buildSnapshot(series, bars, displayBars, { dailyChangePercent, lastBarComplete });
   const verdict = generateVerdict({ indicators, fibonacci, supportResistance, fundamentals, currency, priceHint });
 
   return { chartData, indicators, fibonacci, supportResistance, verdict };
@@ -72,6 +73,7 @@ function calcIndicatorSeries(bars) {
   return {
     sma20: calcSMA(bars, 20),
     sma50: calcSMA(bars, 50),
+    sma200: calcSMA(bars, 200),
     rsi: calcRSI(bars),
     macd: macd.macdLine,
     signal: macd.signalLine,
@@ -93,11 +95,12 @@ function seriesValuesAt(series, index) {
   return Object.fromEntries(Object.entries(series).map(([key, values]) => [key, values[index]]));
 }
 
-function buildSnapshot(series, displayBars, { dailyChangePercent, lastBarComplete }) {
+function buildSnapshot(series, bars, displayBars, { dailyChangePercent, lastBarComplete }) {
   const lastPrice = displayBars[displayBars.length - 1].close;
   const lastRSI = last(series.rsi);
   const sma20 = last(series.sma20);
   const sma50 = last(series.sma50);
+  const sma200 = last(series.sma200);
   const histogram = last(series.histogram);
 
   return {
@@ -109,6 +112,9 @@ function buildSnapshot(series, displayBars, { dailyChangePercent, lastBarComplet
     macdSignal: histogram == null ? null : (histogram > 0 ? 'bullish' : 'bearish'),
     sma20,
     sma50,
+    sma200,
+    sma200Distance: sma200 == null ? null : ((lastPrice - sma200) / sma200) * 100,
+    maCross: findLastMaCross(series, bars),
     bbPosition: getBollingerPosition(lastPrice, last(series.bbUpper), last(series.bbMiddle), last(series.bbLower)),
     lastATR: last(series.atr),
     lastStochK: last(series.stochK),
@@ -116,6 +122,15 @@ function buildSnapshot(series, displayBars, { dailyChangePercent, lastBarComplet
     lastADX: last(series.adx),
     volumeData: buildVolumeData(displayBars, series.obv, lastBarComplete)
   };
+}
+
+/**
+ * Last golden cross (SMA 50 crosses above SMA 200) or death cross (below) within the loaded bars
+ */
+function findLastMaCross(series, bars) {
+  const cross = findLastCrossover(series.sma50, series.sma200);
+  if (!cross) return null;
+  return { type: cross.direction === 'up' ? 'golden' : 'death', timestamp: bars[cross.index].timestamp };
 }
 
 function getRsiZone(rsi) {

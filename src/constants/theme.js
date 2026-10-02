@@ -11,6 +11,7 @@ export const CHART_COLORS = {
   price: BIMATIC_BLUE,
   sma20: '#fbbf24',
   sma50: '#c084fc',
+  sma200: '#22d3ee',
   bollinger: '#94a3b8',
   support: '#22c55e',
   resistance: '#ef4444',

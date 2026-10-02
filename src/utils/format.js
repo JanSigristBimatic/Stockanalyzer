@@ -65,6 +65,15 @@ export function formatPercent(value, digits = 2) {
   return `${value > 0 ? '+' : ''}${value.toFixed(digits)}%`;
 }
 
+/**
+ * Formats a unix timestamp as a Swiss date, e.g. 29.10.2026
+ * @param {number} timestamp - Unix seconds
+ * @returns {string}
+ */
+export function formatDate(timestamp) {
+  return new Date(timestamp * 1000).toLocaleDateString(LOCALE, { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
 function currencyStyle(currency) {
   return currency ? { style: 'currency', currency } : {};
 }
