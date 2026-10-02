@@ -66,19 +66,37 @@ describe('analyzeStock', () => {
 });
 
 describe('toAnalysisSummary', () => {
+  const meta = { currency: 'CHF', exchange: 'EBS', priceHint: 2 };
+
   it('condenses the analysis into a result row', () => {
     const analysis = analyzeStock(makeBars(120), { prefetchCount: 60, dailyChangePercent: 1.5 });
 
-    const summary = toAnalysisSummary('NESN.SW', analysis, { currency: 'CHF', exchange: 'EBS', priceHint: 2 });
+    const summary = toAnalysisSummary('NESN.SW', analysis, { meta, company: { name: 'Nestlé S.A.' } });
 
     expect(summary).toMatchObject({
       symbol: 'NESN.SW',
+      name: 'Nestlé S.A.',
       price: analysis.indicators.lastPrice,
       priceChange: 1.5,
       bullishPercent: analysis.verdict.bullishPercent,
+      score: analysis.verdict.bullishPercent - analysis.verdict.bearishPercent,
       verdict: analysis.verdict.verdict,
       currency: 'CHF',
-      trend: analysis.indicators.shortTrend
+      trend: analysis.indicators.shortTrend,
+      rsi: analysis.indicators.lastRSI,
+      rsiZone: analysis.indicators.rsiSignal
     });
+  });
+
+  it('relates the last volume to the average and the price to the 52-week high', () => {
+    const analysis = analyzeStock(makeBars(60, { volume: (i) => (i === 59 ? 3000 : 1000) }));
+    const summary = toAnalysisSummary('X', analysis, { meta, fundamentals: { week52High: analysis.indicators.lastPrice * 1.25 } });
+
+    expect(summary.volumeRatio).toBeCloseTo(3000 / analysis.indicators.volumeData.avgVolume, 10);
+    expect(summary.week52HighDistance).toBeCloseTo(-20, 10);
+  });
+
+  it('leaves the 52-week distance empty without fundamentals', () => {
+    expect(toAnalysisSummary('SPY', analyzeStock(makeBars(60)), { meta }).week52HighDistance).toBeNull();
   });
 });

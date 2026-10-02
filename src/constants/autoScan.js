@@ -3,6 +3,28 @@
  * Organized by market indices and sectors
  */
 export const SCAN_CATEGORIES = {
+  schweiz: {
+    label: 'Schweiz',
+    description: 'SMI und grosse SMIM-Titel',
+    symbols: [
+      'ABBN.SW', 'ALC.SW', 'CFR.SW', 'GEBN.SW', 'GIVN.SW', 'HOLN.SW', 'KNIN.SW', 'LOGN.SW', 'LONN.SW', 'NESN.SW',
+      'NOVN.SW', 'PGHN.SW', 'ROP.SW', 'SIKA.SW', 'SOON.SW', 'SLHN.SW', 'SREN.SW', 'SCMN.SW', 'UBSG.SW', 'ZURN.SW',
+      'SGSN.SW', 'SCHP.SW', 'GALD.SW', 'SDZ.SW', 'STMN.SW', 'SPSN.SW', 'LISN.SW', 'BAER.SW', 'TEMN.SW', 'VACN.SW',
+      'BEAN.SW', 'HBAN.SW', 'ADEN.SW', 'CLN.SW', 'EMSN.SW', 'BARN.SW', 'GF.SW', 'SIGN.SW', 'UHR.SW', 'TECN.SW',
+      'FHZN.SW', 'AVOL.SW', 'BANB.SW', 'PSPN.SW', 'DKSH.SW'
+    ]
+  },
+  deutschland: {
+    label: 'Deutschland',
+    description: 'DAX und weitere grosse Titel',
+    symbols: [
+      'ADS.DE', 'AIR.DE', 'ALV.DE', 'BAS.DE', 'BAYN.DE', 'BEI.DE', 'BMW.DE', 'BNR.DE', 'CBK.DE', 'CON.DE',
+      'DTG.DE', 'DBK.DE', 'DB1.DE', 'DHL.DE', 'DTE.DE', 'EOAN.DE', 'FRE.DE', 'FME.DE', 'G1A.DE', 'HNR1.DE',
+      'HEI.DE', 'HEN3.DE', 'IFX.DE', 'MBG.DE', 'MRK.DE', 'MTX.DE', 'MUV2.DE', 'P911.DE', 'PAH3.DE', 'QIA.DE',
+      'RHM.DE', 'RWE.DE', 'SAP.DE', 'SRT3.DE', 'SIE.DE', 'ENR.DE', 'SHL.DE', 'SY1.DE', 'VOW3.DE', 'VNA.DE',
+      'ZAL.DE', 'G24.DE'
+    ]
+  },
   sp500: {
     label: 'S&P 500',
     description: 'Top 500 US-Unternehmen',
@@ -208,17 +230,13 @@ export const SCAN_CATEGORIES = {
 };
 
 /**
- * Get all unique symbols from selected categories
+ * Unique symbols of the selected categories; unknown ids are ignored
+ * @param {Object} categories - Categories by id, e.g. SCAN_CATEGORIES plus the watchlist
+ * @param {string[]} categoryIds - Selected category ids
+ * @returns {string[]}
  */
-export function getSymbolsFromCategories(categoryIds) {
-  const symbolSet = new Set();
-  categoryIds.forEach(catId => {
-    const category = SCAN_CATEGORIES[catId];
-    if (category) {
-      category.symbols.forEach(sym => symbolSet.add(sym));
-    }
-  });
-  return Array.from(symbolSet);
+export function getSymbolsFromCategories(categories, categoryIds) {
+  return [...new Set(categoryIds.flatMap(id => categories[id]?.symbols ?? []))];
 }
 
 /**
@@ -229,13 +247,4 @@ export const AUTO_SCAN_PERIODS = [
   { value: '3M', label: '3 Monate' },
   { value: '6M', label: '6 Monate' },
   { value: '1Y', label: '1 Jahr' }
-];
-
-/**
- * Minimum bullish percentage threshold options
- */
-export const BULLISH_THRESHOLDS = [
-  { value: 70, label: '70%' },
-  { value: 80, label: '80%' },
-  { value: 90, label: '90%' }
 ];

@@ -40,7 +40,7 @@ export default function App() {
     analyzeAll, stopAnalyzeAll, clearAnalysisResults
   } = useWatchlist();
 
-  const autoScan = useAutoScan();
+  const autoScan = useAutoScan(watchlist);
 
   const changeTab = (tab) => {
     setActiveTab(tab);
@@ -77,10 +77,13 @@ export default function App() {
     setExpandedCards(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const openInAnalysis = (sym) => {
-    selectSymbol(sym);
+  const openInAnalysis = (sym, options) => {
+    selectSymbol(sym, options);
     setActiveTab('analyse');
   };
+
+  // Daily bars over the scan period reproduce the score the scanner showed
+  const openScanResult = (sym) => openInAnalysis(sym, { period: autoScan.period, interval: '1d' });
 
   const isDataTab = DATA_TABS.includes(activeTab);
   const analysis = result?.analysis;
@@ -162,7 +165,7 @@ export default function App() {
         {activeTab === 'scanner' && (
           <AutoScanTab
             autoScan={autoScan}
-            onAnalyze={openInAnalysis}
+            onAnalyze={openScanResult}
             addToWatchlist={addToWatchlist}
             isInWatchlist={isInWatchlist}
           />

@@ -1,15 +1,11 @@
 import { Wifi } from 'lucide-react';
-import { toMainCurrency } from '../../utils/format';
+import { formatDateTime, toMainCurrency } from '../../utils/format';
 
 /**
  * Shows exchange, currency and the time of the last quote (Yahoo data can be delayed)
  */
 export function DataSourceBadge({ meta }) {
-  const quoteTime = meta.regularMarketTime
-    ? new Date(meta.regularMarketTime * 1000).toLocaleString('de-CH', {
-      day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
-    })
-    : null;
+  const quoteTime = meta.regularMarketTime ? formatDateTime(meta.regularMarketTime) : null;
 
   return (
     <div className="mb-5 p-3 rounded-xl flex items-center gap-3 bg-green-900/50 border-2 border-green-600">

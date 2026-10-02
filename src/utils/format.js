@@ -108,6 +108,17 @@ export function formatDate(timestamp) {
   return new Date(timestamp * 1000).toLocaleDateString(LOCALE, { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
+/**
+ * Formats a unix timestamp as Swiss date and time, e.g. 02.10.2026, 10:15
+ * @param {number} timestamp - Unix seconds
+ * @returns {string}
+ */
+export function formatDateTime(timestamp) {
+  return new Date(timestamp * 1000).toLocaleString(LOCALE, {
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+  });
+}
+
 const relativeTimeFormat = new Intl.RelativeTimeFormat(LOCALE, { numeric: 'auto' });
 const RELATIVE_TIME_UNITS = [
   { unit: 'day', seconds: 24 * 60 * 60 },

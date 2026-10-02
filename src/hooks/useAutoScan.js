@@ -1,162 +1,161 @@
-import { useState, useCallback, useRef, useMemo } from 'react';
+import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { analyzeSymbolSummary } from '../services';
 import { SCAN_CATEGORIES, getSymbolsFromCategories } from '../constants/autoScan';
+import { mapWithConcurrency } from '../utils/async';
+import { usePersistentSettings } from './usePersistentSettings';
 
-const HISTORY_SIZE = 100;
-// Small delay between symbols to avoid rate limiting
-const REQUEST_DELAY_MS = 400;
+const SETTINGS_KEY = 'stockanalyzer_scan_settings';
+const RESULTS_KEY = 'stockanalyzer_last_scan';
+const DEFAULT_SETTINGS = { period: '6M', categoryIds: ['sp500'] };
+const EMPTY_RESULTS = { rows: [], failedSymbols: [], status: 'idle', startedAt: null, finishedAt: null };
+const CONCURRENT_REQUESTS = 4;
 
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const isSameSelection = (a, b) => a.length === b.length && a.every((id, i) => id === b[i]);
+
+// Results of the last paused or finished scan, if they belong to the current settings
+function loadResults({ period, categoryIds }) {
+  try {
+    const stored = JSON.parse(localStorage.getItem(RESULTS_KEY));
+    if (!stored || stored.period !== period || !isSameSelection(stored.categoryIds, categoryIds)) return EMPTY_RESULTS;
+    const { rows, failedSymbols, status, startedAt, finishedAt } = stored;
+    return { rows, failedSymbols, status, startedAt, finishedAt };
+  } catch (e) {
+    console.error('Failed to load scan results:', e);
+    return EMPTY_RESULTS;
+  }
+}
+
+function removeStoredResults() {
+  try {
+    localStorage.removeItem(RESULTS_KEY);
+  } catch (e) {
+    console.error('Failed to remove scan results:', e);
+  }
+}
 
 /**
- * Hook for automated stock scanning.
- * Scans the selected symbols until one reaches the bullish threshold. Every run has an id;
- * pausing or resetting invalidates the running loop, so a stale loop never writes state and
- * only one scan runs at a time.
+ * Scans all symbols of the selected categories and collects one summary row per symbol.
+ * Every run has an id; pausing, resetting or changing the settings invalidates the running
+ * run, so a stale run never writes state and only one scan runs at a time. Settings and the
+ * results of a paused or finished scan survive a reload.
+ * @param {Array<{symbol: string}>} watchlist - Offered as an additional category
  */
-export function useAutoScan() {
-  const [scanning, setScanning] = useState(false);
-  const [paused, setPaused] = useState(false);
+export function useAutoScan(watchlist) {
+  const [settings, setSettings] = usePersistentSettings(SETTINGS_KEY, DEFAULT_SETTINGS);
+  const [results, setResults] = useState(() => loadResults(settings));
   const [currentSymbol, setCurrentSymbol] = useState('');
-  const [scannedCount, setScannedCount] = useState(0);
-  const [skippedCount, setSkippedCount] = useState(0);
-  const [foundStock, setFoundStock] = useState(null);
-  const [scanHistory, setScanHistory] = useState([]);
-  const [scanPeriod, setScanPeriod] = useState('6M');
-  const [threshold, setThreshold] = useState(90);
-  const [selectedCategories, setSelectedCategories] = useState(['sp500']);
-
   const runIdRef = useRef(0);
-  const nextIndexRef = useRef(0);
 
-  const activeSymbols = useMemo(() => getSymbolsFromCategories(selectedCategories), [selectedCategories]);
+  const categories = useMemo(() => (watchlist.length === 0 ? SCAN_CATEGORIES : {
+    ...SCAN_CATEGORIES,
+    watchlist: { label: 'Watchlist', description: 'Deine Watchlist', symbols: watchlist.map(item => item.symbol) }
+  }), [watchlist]);
+  const activeSymbols = useMemo(
+    () => getSymbolsFromCategories(categories, settings.categoryIds),
+    [categories, settings.categoryIds]
+  );
 
-  /**
-   * Starts a scan, continues after a pause or a find, or starts over after a completed scan
-   */
-  const startScan = useCallback(async () => {
+  useEffect(() => {
+    if (results.status !== 'paused' && results.status !== 'done') return;
+    try {
+      localStorage.setItem(RESULTS_KEY, JSON.stringify({ ...settings, ...results }));
+    } catch (e) {
+      console.error('Failed to save scan results:', e);
+    }
+  }, [settings, results]);
+
+  const runScan = useCallback(async (symbols) => {
     const runId = ++runIdRef.current;
     const isCurrentRun = () => runId === runIdRef.current;
+    setResults(prev => ({ ...prev, status: 'scanning' }));
 
-    if (nextIndexRef.current >= activeSymbols.length) {
-      nextIndexRef.current = 0;
-      setScannedCount(0);
-      setSkippedCount(0);
-      setScanHistory([]);
-    }
-    setScanning(true);
-    setPaused(false);
-    setFoundStock(null);
-
-    while (nextIndexRef.current < activeSymbols.length) {
-      const symbol = activeSymbols[nextIndexRef.current];
+    await mapWithConcurrency(symbols, CONCURRENT_REQUESTS, async (symbol) => {
+      if (!isCurrentRun()) return;
       setCurrentSymbol(symbol);
-
-      const result = await analyzeSymbolSummary(symbol, scanPeriod);
+      const row = await analyzeSymbolSummary(symbol, settings.period);
       // A paused or reset run drops its result; continuing rescans this symbol
       if (!isCurrentRun()) return;
-      nextIndexRef.current += 1;
+      setResults(prev => (row
+        ? { ...prev, rows: [...prev.rows, row] }
+        : { ...prev, failedSymbols: [...prev.failedSymbols, symbol] }));
+    });
 
-      if (!result) {
-        setSkippedCount(prev => prev + 1);
-      } else {
-        setScannedCount(prev => prev + 1);
-        setScanHistory(prev => [result, ...prev].slice(0, HISTORY_SIZE));
-        if (result.bullishPercent >= threshold) {
-          setFoundStock(result);
-          setScanning(false);
-          return;
-        }
-      }
-
-      await sleep(REQUEST_DELAY_MS);
-      if (!isCurrentRun()) return;
-    }
-
-    setScanning(false);
+    if (!isCurrentRun()) return;
     setCurrentSymbol('');
-  }, [activeSymbols, scanPeriod, threshold]);
+    setResults(prev => ({ ...prev, status: 'done', finishedAt: Date.now() }));
+  }, [settings.period]);
 
   /**
-   * Pauses the running scan; it can be continued with startScan
+   * Starts a new scan of all selected symbols
    */
+  const startScan = useCallback(() => {
+    setResults({ ...EMPTY_RESULTS, startedAt: Date.now() });
+    runScan(activeSymbols);
+  }, [activeSymbols, runScan]);
+
+  /**
+   * Continues a paused scan with the symbols that have no result yet
+   */
+  const resumeScan = useCallback(() => {
+    const processed = new Set([...results.rows.map(row => row.symbol), ...results.failedSymbols]);
+    runScan(activeSymbols.filter(symbol => !processed.has(symbol)));
+  }, [activeSymbols, results, runScan]);
+
   const pauseScan = useCallback(() => {
     runIdRef.current += 1;
-    setScanning(false);
-    setPaused(true);
+    setCurrentSymbol('');
+    setResults(prev => ({ ...prev, status: 'paused', finishedAt: Date.now() }));
   }, []);
 
   /**
-   * Stops any running scan and clears all progress
+   * Stops a running scan and clears its results, also the stored ones
    */
   const resetScan = useCallback(() => {
     runIdRef.current += 1;
-    nextIndexRef.current = 0;
-    setScanning(false);
-    setPaused(false);
     setCurrentSymbol('');
-    setScannedCount(0);
-    setSkippedCount(0);
-    setFoundStock(null);
-    setScanHistory([]);
+    setResults(EMPTY_RESULTS);
+    removeStoredResults();
   }, []);
 
-  /**
-   * Change scan period (resets scan)
-   */
-  const changeScanPeriod = useCallback((newPeriod) => {
-    setScanPeriod(newPeriod);
+  const updateSettings = useCallback((changes) => {
     resetScan();
-  }, [resetScan]);
+    setSettings(prev => ({ ...prev, ...changes }));
+  }, [resetScan, setSettings]);
+
+  const changePeriod = useCallback((period) => updateSettings({ period }), [updateSettings]);
 
   /**
-   * Change threshold (resets scan)
-   */
-  const changeThreshold = useCallback((newThreshold) => {
-    setThreshold(newThreshold);
-    resetScan();
-  }, [resetScan]);
-
-  /**
-   * Toggles a category; at least one category stays selected (resets scan)
+   * Toggles a category; at least one category stays selected
    */
   const toggleCategory = useCallback((categoryId) => {
-    const nextCategories = selectedCategories.includes(categoryId)
-      ? selectedCategories.filter(id => id !== categoryId)
-      : [...selectedCategories, categoryId];
-    if (nextCategories.length === 0) return;
+    const { categoryIds } = settings;
+    const nextIds = categoryIds.includes(categoryId)
+      ? categoryIds.filter(id => id !== categoryId)
+      : [...categoryIds, categoryId];
+    if (nextIds.length > 0) updateSettings({ categoryIds: nextIds });
+  }, [settings, updateSettings]);
 
-    setSelectedCategories(nextCategories);
-    resetScan();
-  }, [selectedCategories, resetScan]);
+  const selectAllCategories = useCallback(
+    () => updateSettings({ categoryIds: Object.keys(categories) }),
+    [categories, updateSettings]
+  );
 
-  /**
-   * Selects all categories (resets scan)
-   */
-  const selectAllCategories = useCallback(() => {
-    setSelectedCategories(Object.keys(SCAN_CATEGORIES));
-    resetScan();
-  }, [resetScan]);
+  const processedCount = results.rows.length + results.failedSymbols.length;
 
   return {
-    scanning,
-    paused,
+    ...results,
     currentSymbol,
-    scannedCount,
-    skippedCount,
-    foundStock,
-    scanHistory,
-    scanPeriod,
-    threshold,
-    selectedCategories,
+    period: settings.period,
+    categoryIds: settings.categoryIds,
+    categories,
     totalSymbols: activeSymbols.length,
-    progress: Math.round(((scannedCount + skippedCount) / activeSymbols.length) * 100),
-    categories: SCAN_CATEGORIES,
+    processedCount,
+    progress: activeSymbols.length > 0 ? Math.min(100, Math.round((processedCount / activeSymbols.length) * 100)) : 0,
     startScan,
+    resumeScan,
     pauseScan,
     resetScan,
-    changeScanPeriod,
-    changeThreshold,
+    changePeriod,
     toggleCategory,
     selectAllCategories
   };

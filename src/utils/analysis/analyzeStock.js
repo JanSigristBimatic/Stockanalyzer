@@ -45,22 +45,37 @@ export function analyzeStock(bars, {
 }
 
 /**
- * Condenses an analysis into the row shown by the watchlist and the scanner
+ * Condenses an analysis into the row shown by the watchlist and the scanner.
+ * The score (bullish minus bearish percent, -100 to 100) ranks rows from best to worst.
+ * @param {string} symbol - Yahoo symbol
+ * @param {{indicators: Object, verdict: Object}} analysis - Result of analyzeStock
+ * @param {{meta: Object, company?: Object|null, fundamentals?: Object|null}} details - Quote meta data, company and fundamentals
  */
-export function toAnalysisSummary(symbol, { indicators, verdict }, meta) {
+export function toAnalysisSummary(symbol, { indicators, verdict }, { meta, company = null, fundamentals = null }) {
+  const { lastPrice, volumeData } = indicators;
+  const week52High = fundamentals?.week52High;
+
   return {
     symbol,
-    price: indicators.lastPrice,
+    name: company?.name ?? null,
+    price: lastPrice,
     priceChange: indicators.priceChange,
     bullishPercent: verdict.bullishPercent,
     bearishPercent: verdict.bearishPercent,
+    score: verdict.bullishPercent - verdict.bearishPercent,
     verdict: verdict.verdict,
     verdictType: verdict.verdictType,
     currency: meta.currency,
     exchange: meta.exchange,
     priceHint: meta.priceHint,
     trend: indicators.shortTrend,
-    macdSignal: indicators.macdSignal
+    macdSignal: indicators.macdSignal,
+    rsi: indicators.lastRSI,
+    rsiZone: indicators.rsiSignal,
+    sma200Distance: indicators.sma200Distance,
+    maCross: indicators.maCross,
+    volumeRatio: volumeData?.avgVolume > 0 ? volumeData.currentVolume / volumeData.avgVolume : null,
+    week52HighDistance: week52High > 0 ? ((lastPrice - week52High) / week52High) * 100 : null
   };
 }
 

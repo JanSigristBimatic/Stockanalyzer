@@ -49,5 +49,5 @@ export async function analyzeSymbol(symbol, period = '6M', interval = '1d') {
  */
 export async function analyzeSymbolSummary(symbol, period) {
   const response = await analyzeSymbol(symbol, period, '1d');
-  return response.error ? null : toAnalysisSummary(symbol, response.analysis, response.meta);
+  return response.error ? null : toAnalysisSummary(symbol, response.analysis, response);
 }
