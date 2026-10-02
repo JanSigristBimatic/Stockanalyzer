@@ -3,3 +3,4 @@ export { useWatchlist } from './useWatchlist';
 export { useAutoScan } from './useAutoScan';
 export { useSymbolAutocomplete } from './useSymbolAutocomplete';
 export { useExchangeRate } from './useExchangeRate';
+export { useNews } from './useNews';

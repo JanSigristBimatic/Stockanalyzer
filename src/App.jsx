@@ -90,7 +90,6 @@ export default function App() {
 
         {activeTab === 'analyse' && result && (
           <AnalysisTab
-            key={`analyse-${timePeriod}-${interval}`}
             symbol={result.symbol}
             verdict={analysis.verdict}
             indicators={analysis.indicators}

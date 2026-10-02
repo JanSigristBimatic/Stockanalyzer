@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseChartResponse, parseQuoteSummary, isMarketOpen, getTimePeriod } from './yahooFinance';
+import { parseChartResponse, parseQuoteSummary, parseNews, getNewsQuery, isMarketOpen, getTimePeriod } from './yahooFinance';
 import { TIME_PERIODS } from '../constants';
 
 const OPTIONS = { period: '6M', interval: '1d', displayCutoff: 1_000_000 + 10 * 86400 };
@@ -158,6 +158,36 @@ describe('parseQuoteSummary', () => {
       isEarningsDateEstimate: false,
       exDividendDate: null
     });
+  });
+});
+
+describe('parseNews', () => {
+  it('keeps https articles only and sorts them newest first', () => {
+    const json = {
+      news: [
+        { uuid: 'a', title: 'Older', publisher: 'Reuters', link: 'https://finance.yahoo.com/a', providerPublishTime: 100 },
+        { uuid: 'b', title: 'Script', link: 'javascript:alert(1)', providerPublishTime: 300 },
+        { uuid: 'c', title: 'Newer', link: 'https://finance.yahoo.com/c', providerPublishTime: 200 },
+        { uuid: 'd', link: 'https://finance.yahoo.com/d', providerPublishTime: 400 }
+      ]
+    };
+    expect(parseNews(json)).toEqual([
+      { id: 'c', title: 'Newer', publisher: null, link: 'https://finance.yahoo.com/c', publishedAt: 200 },
+      { id: 'a', title: 'Older', publisher: 'Reuters', link: 'https://finance.yahoo.com/a', publishedAt: 100 }
+    ]);
+  });
+
+  it('returns an empty list without news', () => {
+    expect(parseNews({ news: [] })).toEqual([]);
+    expect(parseNews({})).toEqual([]);
+  });
+});
+
+describe('getNewsQuery', () => {
+  it('searches by company name for symbols with an exchange suffix', () => {
+    expect(getNewsQuery('NESN.SW', 'Nestlé S.A.')).toBe('Nestlé S.A.');
+    expect(getNewsQuery('AAPL', 'Apple Inc.')).toBe('AAPL');
+    expect(getNewsQuery('VOD.L', null)).toBe('VOD.L');
   });
 });
 

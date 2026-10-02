@@ -3,6 +3,8 @@ export {
   searchSymbols,
   fetchStockData,
   fetchQuoteSummary,
-  fetchExchangeRate
+  fetchExchangeRate,
+  fetchNews,
+  getNewsQuery
 } from './yahooFinance';
 export { analyzeSymbol, analyzeSymbolSummary } from './analyzeSymbol';

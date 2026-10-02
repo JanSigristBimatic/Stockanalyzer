@@ -6,9 +6,10 @@ import { CompanyInfoCard } from './CompanyInfoCard';
 import { LongTermTrendCard } from './LongTermTrendCard';
 import { RiskCalculator } from './RiskCalculator';
 import { UpcomingEvents } from './UpcomingEvents';
+import { NewsCard } from './NewsCard';
 
 /**
- * Analysis tab: overall verdict, upcoming events, key indicators and company information
+ * Analysis tab: overall verdict, upcoming events, key indicators, news and company information
  */
 export function AnalysisTab({
   symbol, verdict, indicators, supportResistance, events, companyInfo, currency, priceHint,
@@ -34,6 +35,7 @@ export function AnalysisTab({
           priceHint={priceHint}
         />
       </div>
+      <NewsCard symbol={symbol} companyName={companyInfo?.name ?? null} />
       {companyInfo && <CompanyInfoCard info={companyInfo} />}
       <Disclaimer />
     </div>

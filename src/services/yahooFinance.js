@@ -6,6 +6,7 @@ const MIN_BARS = 20;
 const INTRADAY_INTERVALS = ['15m', '1h'];
 const LONG_PERIODS = ['6M', '1Y', '2Y', '5Y'];
 const QUOTE_SUMMARY_MODULES = 'defaultKeyStatistics,financialData,summaryDetail,assetProfile,price,calendarEvents,recommendationTrend';
+const NEWS_COUNT = 8;
 
 // Calendar time that covers at least ~210 bars before the display period (SMA 200 warm-up),
 // including nights, weekends and holidays. 15m stays within Yahoo's 60-day limit for 1M.
@@ -68,6 +69,47 @@ export async function searchSymbols(query) {
       .filter(q => q.quoteType === 'EQUITY' || q.quoteType === 'ETF')
       .map(q => ({ symbol: q.symbol, name: q.longname || q.shortname || q.symbol, exchange: q.exchange, exchangeDisplay: q.exchDisp || q.exchange, type: q.quoteType, score: q.score || 0 }));
   } catch { return []; }
+}
+
+/**
+ * Latest news for a search query, newest first
+ * @param {string} query - Symbol or company name, see getNewsQuery
+ * @returns {Promise<Array<{id: string, title: string, publisher: string|null, link: string, publishedAt: number|null}>|null>} - null if the request failed
+ */
+export async function fetchNews(query) {
+  const url = `${YAHOO_API}/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=0&newsCount=${NEWS_COUNT}`;
+  const { response } = await fetchWithProxy(url, 5000);
+  if (!response || !response.ok) return null;
+  try {
+    return parseNews(await response.json());
+  } catch { return null; }
+}
+
+/**
+ * Maps the news of a search response; only https links are kept, since they end up in an href
+ */
+export function parseNews(json) {
+  return (json?.news ?? [])
+    .filter(item => item.title && typeof item.link === 'string' && item.link.startsWith('https://'))
+    .map(item => ({
+      id: item.uuid ?? item.link,
+      title: item.title,
+      publisher: item.publisher ?? null,
+      link: item.link,
+      publishedAt: item.providerPublishTime ?? null
+    }))
+    .sort((a, b) => (b.publishedAt ?? 0) - (a.publishedAt ?? 0));
+}
+
+/**
+ * Yahoo's search finds no news for symbols with an exchange suffix such as NESN.SW,
+ * but does for the company name
+ * @param {string} symbol - Yahoo symbol
+ * @param {string|null} companyName - Long company name
+ * @returns {string}
+ */
+export function getNewsQuery(symbol, companyName) {
+  return symbol.includes('.') && companyName ? companyName : symbol;
 }
 
 export async function checkSymbolExists(symbol) {
