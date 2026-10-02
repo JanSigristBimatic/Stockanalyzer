@@ -48,6 +48,31 @@ export function formatPrice(value, currency, priceHint = 2) {
 }
 
 /**
+ * Creates a formatter for quote values without the currency, e.g. for chart axes that format
+ * many values per frame. Minor-unit quotes such as pence are converted like in formatPrice.
+ * @param {string|null} currency - Yahoo currency code of the quote
+ * @param {number} [priceHint=2] - Decimal places
+ * @returns {function(number): string}
+ */
+export function createQuoteFormatter(currency, priceHint = 2) {
+  const minorUnit = MINOR_UNITS[currency];
+  const digits = priceHint + (minorUnit?.extraDigits ?? 0);
+  const numberFormat = new Intl.NumberFormat(LOCALE, { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  return (value) => numberFormat.format(minorUnit ? value / minorUnit.factor : value);
+}
+
+const compactNumberFormat = new Intl.NumberFormat(LOCALE, { notation: 'compact', maximumFractionDigits: 1 });
+
+/**
+ * Formats large plain numbers compactly, e.g. a volume of 3247178 as "3.2 Mio."
+ * @param {number} value
+ * @returns {string}
+ */
+export function formatCompactNumber(value) {
+  return compactNumberFormat.format(value);
+}
+
+/**
  * Formats large amounts compactly, e.g. "CHF 191.96 Mrd."; the value must be in the main currency
  * @param {number|null} value - Amount
  * @param {string|null} currency - Currency code

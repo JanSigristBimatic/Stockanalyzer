@@ -382,15 +382,22 @@ Ein Unternehmen mit solidem, wachsendem FCF ist in der Regel ein gutes Investmen
 export const INDICATOR_INFO = {
   priceChart: {
     title: 'Kursverlauf',
-    short: 'Zeigt den historischen Preisverlauf mit gleitenden Durchschnitten und wichtigen Preislevels.',
-    full: `Der Kursverlauf zeigt die Entwicklung des Aktienkurses über Zeit. Die wichtigsten Elemente sind:
+    short: 'Kerzenchart mit gleitenden Durchschnitten, Preislevels und zuschaltbaren Indikatoren. Das Mausrad zoomt, Ziehen verschiebt den Ausschnitt.',
+    full: `Der Kursverlauf zeigt jede Periode als Kerze. Die wichtigsten Elemente sind:
 
-• **Kurslinie (blau)**: Der tägliche Schlusskurs der Aktie
-• **SMA 20 (gelb)**: Durchschnitt der letzten 20 Tage - zeigt kurzfristigen Trend
-• **SMA 50 (lila)**: Durchschnitt der letzten 50 Tage - zeigt mittelfristigen Trend
-• **Support (grün)**: Preisniveaus, bei denen Käufer typischerweise einsteigen
-• **Resistance (rot)**: Preisniveaus, bei denen Verkäufer typischerweise verkaufen
-• **Fibonacci-Levels (orange gestrichelt)**: Mathematische Retracement-Levels
+• **Kerzen**: Grün schliesst über der Eröffnung, rot darunter; die Dochte zeigen Hoch und Tief
+• **SMA 20 (gelb)**: Durchschnitt der letzten 20 Perioden für den kurzfristigen Trend
+• **SMA 50 (lila)**: Durchschnitt der letzten 50 Perioden für den mittelfristigen Trend
+• **SMA 200 (türkis)**: Durchschnitt der letzten 200 Perioden für den langfristigen Trend
+• **Bollinger-Bänder (grau)**: Schwankungsbreite um den SMA 20
+• **Support (grün gestrichelt)**: Preisniveaus, bei denen Käufer typischerweise einsteigen
+• **Widerstand (rot gestrichelt)**: Preisniveaus, bei denen Verkäufer typischerweise verkaufen
+• **Fibonacci-Levels (orange gepunktet)**: Mathematische Retracement-Levels
+
+**Bedienung**
+• Linien und Indikatoren lassen sich über die Schalter ein- und ausblenden
+• Das Mausrad zoomt, Ziehen verschiebt den Ausschnitt
+• Das Fadenkreuz zeigt die Werte der Kerze darunter in der Legende
 
 **Wie lesen?**
 - Wenn SMA 20 über SMA 50 liegt = Aufwärtstrend (bullish)

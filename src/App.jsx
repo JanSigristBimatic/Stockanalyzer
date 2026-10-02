@@ -121,14 +121,17 @@ export default function App() {
             symbol={result.symbol}
             verdict={analysis.verdict}
             indicators={analysis.indicators}
+            chartData={analysis.chartData}
             supportResistance={analysis.supportResistance}
             events={result.events}
             companyInfo={result.company}
             currency={result.meta.currency}
             priceHint={result.meta.priceHint}
+            interval={interval}
             isInWatchlist={isInWatchlist(result.symbol)}
             onAddToWatchlist={() => addToWatchlist(result.symbol, result.company?.name)}
             onRemoveFromWatchlist={() => removeFromWatchlist(result.symbol)}
+            onOpenCharts={() => changeTab('charts')}
           />
         )}
 
@@ -144,13 +147,13 @@ export default function App() {
 
         {activeTab === 'charts' && result && (
           <ChartsTab
-            key={`charts-${timePeriod}-${interval}`}
-            stockData={analysis.chartData}
+            chartData={analysis.chartData}
             fibonacci={analysis.fibonacci}
             supportResistance={analysis.supportResistance}
             indicators={analysis.indicators}
             currency={result.meta.currency}
             priceHint={result.meta.priceHint}
+            interval={interval}
           />
         )}
 

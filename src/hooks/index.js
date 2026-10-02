@@ -5,3 +5,4 @@ export { useSymbolAutocomplete } from './useSymbolAutocomplete';
 export { useExchangeRate } from './useExchangeRate';
 export { useNews } from './useNews';
 export { useUrlSync } from './useUrlSync';
+export { usePersistentSettings } from './usePersistentSettings';

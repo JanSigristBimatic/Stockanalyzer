@@ -1,27 +1,24 @@
 import { memo } from 'react';
 import { Disclaimer } from '../../components/ui';
-import { PriceChart } from './PriceChart';
+import { ProChart } from './ProChart';
 import { FibonacciAndSRCards } from './FibonacciAndSRCards';
-import { RSIChart } from './RSIChart';
-import { MACDChart } from './MACDChart';
-import { VolumeChart } from './VolumeChart';
-import { ATRChart } from './ATRChart';
-import { StochasticChart } from './StochasticChart';
-import { ADXChart } from './ADXChart';
 
 /**
- * Charts tab: price chart with levels plus all indicator charts.
- * Memoized so unrelated app state (watchlist, scanner, loading flags) does not redraw all charts.
+ * Charts tab: interactive chart with indicator panes plus the Fibonacci and support/resistance levels.
+ * Memoized so unrelated app state (watchlist, scanner, loading flags) does not rebuild the chart.
  */
-export const ChartsTab = memo(function ChartsTab({ stockData, fibonacci, supportResistance, indicators, currency, priceHint }) {
+export const ChartsTab = memo(function ChartsTab({
+  chartData, fibonacci, supportResistance, indicators, currency, priceHint, interval
+}) {
   return (
     <div className="space-y-6">
-      <PriceChart
-        data={stockData}
+      <ProChart
+        chartData={chartData}
         fibonacci={fibonacci}
         supportResistance={supportResistance}
         currency={currency}
         priceHint={priceHint}
+        interval={interval}
       />
       <FibonacciAndSRCards
         fibonacci={fibonacci}
@@ -30,12 +27,6 @@ export const ChartsTab = memo(function ChartsTab({ stockData, fibonacci, support
         currency={currency}
         priceHint={priceHint}
       />
-      <RSIChart data={stockData} />
-      <MACDChart data={stockData} />
-      <VolumeChart data={stockData} />
-      <ATRChart data={stockData} />
-      <StochasticChart data={stockData} />
-      <ADXChart data={stockData} />
       <Disclaimer />
     </div>
   );

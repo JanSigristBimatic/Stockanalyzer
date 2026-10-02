@@ -7,13 +7,14 @@ import { LongTermTrendCard } from './LongTermTrendCard';
 import { RiskCalculator } from './RiskCalculator';
 import { UpcomingEvents } from './UpcomingEvents';
 import { NewsCard } from './NewsCard';
+import { PriceOverviewCard } from './PriceOverviewCard';
 
 /**
- * Analysis tab: overall verdict, upcoming events, key indicators, news and company information
+ * Analysis tab: overall verdict, upcoming events, key indicators, price chart, news and company information
  */
 export function AnalysisTab({
-  symbol, verdict, indicators, supportResistance, events, companyInfo, currency, priceHint,
-  isInWatchlist, onAddToWatchlist, onRemoveFromWatchlist
+  symbol, verdict, indicators, chartData, supportResistance, events, companyInfo, currency, priceHint, interval,
+  isInWatchlist, onAddToWatchlist, onRemoveFromWatchlist, onOpenCharts
 }) {
   return (
     <div className="space-y-6">
@@ -26,6 +27,14 @@ export function AnalysisTab({
         onRemove={onRemoveFromWatchlist}
       />
       <SummaryCards symbol={symbol} indicators={indicators} currency={currency} priceHint={priceHint} />
+      <PriceOverviewCard
+        chartData={chartData}
+        supportResistance={supportResistance}
+        currency={currency}
+        priceHint={priceHint}
+        interval={interval}
+        onOpenCharts={onOpenCharts}
+      />
       <div className="grid md:grid-cols-2 gap-4 items-start">
         <LongTermTrendCard indicators={indicators} />
         <RiskCalculator

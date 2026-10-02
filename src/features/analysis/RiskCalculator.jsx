@@ -1,6 +1,5 @@
-import { useState, useEffect } from 'react';
 import { Calculator } from 'lucide-react';
-import { useExchangeRate } from '../../hooks';
+import { useExchangeRate, usePersistentSettings } from '../../hooks';
 import { calcRiskPlan } from '../../utils/analysis/riskPlan';
 import { formatPrice, mainCurrencyPerQuoteUnit, toMainCurrency } from '../../utils/format';
 
@@ -12,29 +11,12 @@ const STOP_METHODS = [
   { value: 'support', label: 'Unter Unterstützung' }
 ];
 
-function loadSettings() {
-  try {
-    return { ...DEFAULT_SETTINGS, ...JSON.parse(localStorage.getItem(SETTINGS_KEY)) };
-  } catch (e) {
-    console.error('Failed to load risk settings:', e);
-    return DEFAULT_SETTINGS;
-  }
-}
-
 /**
  * Position size, stop and target for a long trade with a fixed risk per trade
  */
 export function RiskCalculator({ indicators, supportResistance, currency, priceHint }) {
-  const [settings, setSettings] = useState(loadSettings);
+  const [settings, setSettings] = usePersistentSettings(SETTINGS_KEY, DEFAULT_SETTINGS);
   const { rate, loading } = useExchangeRate(toMainCurrency(currency), ACCOUNT_CURRENCY);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-    } catch (e) {
-      console.error('Failed to save risk settings:', e);
-    }
-  }, [settings]);
 
   const updateSettings = (changes) => setSettings(prev => ({ ...prev, ...changes }));
   const accountSize = Number(settings.accountSize);

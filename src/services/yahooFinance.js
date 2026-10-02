@@ -3,9 +3,7 @@ import { EXCHANGE_SUFFIXES, TIME_PERIODS } from '../constants';
 const YAHOO_API = 'https://query1.finance.yahoo.com';
 const DAY_SECONDS = 24 * 60 * 60;
 const MIN_BARS = 20;
-const INTRADAY_INTERVALS = ['15m', '1h'];
 const INTERVAL_SECONDS = { '15m': 15 * 60, '1h': 60 * 60, '1d': DAY_SECONDS, '1wk': 7 * DAY_SECONDS };
-const LONG_PERIODS = ['6M', '1Y', '2Y', '5Y'];
 const QUOTE_SUMMARY_MODULES = 'defaultKeyStatistics,financialData,summaryDetail,assetProfile,price,calendarEvents,recommendationTrend';
 const NEWS_COUNT = 8;
 
@@ -147,7 +145,7 @@ export async function fetchStockData(symbol, period = '6M', interval = '1d') {
     return { error: { type: 'network', message: error?.message || 'Network error' } };
   }
   try {
-    return parseChartResponse(await response.json(), response.status, { period, interval, displayCutoff });
+    return parseChartResponse(await response.json(), response.status, { interval, displayCutoff });
   } catch {
     return { error: { type: 'parse', message: 'Failed to parse response' } };
   }
@@ -157,10 +155,10 @@ export async function fetchStockData(symbol, period = '6M', interval = '1d') {
  * Converts a Yahoo chart response into OHLCV bars at full precision
  * @param {Object} json - Response body
  * @param {number} status - HTTP status
- * @param {{period: string, interval: string, displayCutoff: number}} options
+ * @param {{interval: string, displayCutoff: number}} options
  * @returns {Object} - Bars with meta data, or { error } with type 'symbol' or 'http'
  */
-export function parseChartResponse(json, status, { period, interval, displayCutoff }) {
+export function parseChartResponse(json, status, { interval, displayCutoff }) {
   if (status === 404) {
     return { error: { type: 'symbol', message: json?.chart?.error?.description || 'Symbol not found' } };
   }
@@ -175,19 +173,14 @@ export function parseChartResponse(json, status, { period, interval, displayCuto
   }
 
   const { meta } = result;
-  const bars = result.timestamp.map((timestamp, i) => {
-    const date = new Date(timestamp * 1000);
-    return {
-      date: formatBarDate(date, period, interval),
-      fullDate: date,
-      timestamp,
-      open: quote.open[i] ?? null,
-      high: quote.high[i],
-      low: quote.low[i],
-      close: quote.close[i],
-      volume: quote.volume[i] ?? 0
-    };
-  });
+  const bars = result.timestamp.map((timestamp, i) => ({
+    timestamp,
+    open: quote.open[i] > 0 ? quote.open[i] : null,
+    high: quote.high[i],
+    low: quote.low[i],
+    close: quote.close[i],
+    volume: quote.volume[i] ?? 0
+  }));
 
   // Yahoo marks missing prices with null or 0; such bars would distort ATR, ADX, Stochastic and Fibonacci
   const data = completeLatestBar(bars, meta, INTERVAL_SECONDS[interval])
@@ -229,16 +222,6 @@ function completeLatestBar(bars, meta, intervalSeconds) {
     ? { ...latest, close: price, high: Math.max(latest.high, price), low: Math.min(latest.low, price) }
     : { ...latest, open: price, high: price, low: price, close: price };
   return [...bars.slice(0, -1), completed];
-}
-
-function formatBarDate(date, period, interval) {
-  if (INTRADAY_INTERVALS.includes(interval)) {
-    return date.toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-  }
-  if (LONG_PERIODS.includes(period)) {
-    return date.toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: '2-digit' });
-  }
-  return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
 }
 
 /**

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { parseChartResponse, parseQuoteSummary, parseNews, getNewsQuery, isMarketOpen, getTimePeriod } from './yahooFinance';
 import { TIME_PERIODS } from '../constants';
 
-const OPTIONS = { period: '6M', interval: '1d', displayCutoff: 1_000_000 + 10 * 86400 };
+const OPTIONS = { interval: '1d', displayCutoff: 1_000_000 + 10 * 86400 };
 
 function chartJson({ bars = 30, close = (i) => 0.93 + i * 0.0001, high = (i) => close(i) + 0.001, meta = {} } = {}) {
   const timestamps = Array.from({ length: bars }, (_, i) => 1_000_000 + i * 86400);
@@ -58,6 +58,12 @@ describe('parseChartResponse', () => {
     const { data } = parseChartResponse(json, 200, OPTIONS);
     expect(data).toHaveLength(29);
     expect(data.every(bar => bar.high != null)).toBe(true);
+  });
+
+  it('treats an open of 0 as missing', () => {
+    const json = chartJson();
+    json.chart.result[0].indicators.quote[0].open[3] = 0;
+    expect(parseChartResponse(json, 200, OPTIONS).data[3].open).toBeNull();
   });
 
   it('drops bars with zero high or low', () => {

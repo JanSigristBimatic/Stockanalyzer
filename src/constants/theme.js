@@ -29,13 +29,3 @@ export const CHART_COLORS = {
   plusDI: '#22c55e',
   minusDI: '#ef4444',
 };
-
-/**
- * Tooltip style configuration
- */
-export const TOOLTIP_STYLE = {
-  backgroundColor: '#1e293b',
-  border: `2px solid ${BIMATIC_BLUE}`,
-  borderRadius: '8px',
-  color: '#f1f5f9',
-};

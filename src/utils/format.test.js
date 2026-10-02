@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { formatPrice, formatCompactCurrency, formatPercent, toMainCurrency, formatDaysFromToday, formatTimeAgo } from './format';
+import {
+  formatPrice, formatCompactCurrency, formatPercent, toMainCurrency, formatDaysFromToday, formatTimeAgo,
+  createQuoteFormatter, formatCompactNumber
+} from './format';
 
 // ICU versions differ in grouping characters and spaces; compare a normalized form
 const normalize = (text) => text.replace(/[\u00a0\u202f]/g, ' ').replace(/[\u2019]/g, "'");
@@ -67,5 +70,23 @@ describe('formatTimeAgo', () => {
 
   it('treats timestamps in the future as now', () => {
     expect(formatTimeAgo(now + 120, now)).toBe('in dieser Minute');
+  });
+});
+
+describe('createQuoteFormatter', () => {
+  it('formats like formatPrice without the currency', () => {
+    expect(normalize(createQuoteFormatter('CHF')(1234.5))).toBe("1'234.50");
+    expect(createQuoteFormatter('CHF', 4)(0.93125)).toBe('0.9313');
+  });
+
+  it('converts pence to pounds', () => {
+    expect(createQuoteFormatter('GBp')(124.1)).toBe('1.2410');
+  });
+});
+
+describe('formatCompactNumber', () => {
+  it('abbreviates large numbers', () => {
+    expect(normalize(formatCompactNumber(3247178))).toBe('3.2 Mio.');
+    expect(formatCompactNumber(950)).toBe('950');
   });
 });
