@@ -5,17 +5,19 @@ import { SummaryCards } from './SummaryCards';
 import { CompanyInfoCard } from './CompanyInfoCard';
 import { LongTermTrendCard } from './LongTermTrendCard';
 import { RiskCalculator } from './RiskCalculator';
+import { UpcomingEvents } from './UpcomingEvents';
 
 /**
- * Analysis tab: overall verdict, key indicators and company information
+ * Analysis tab: overall verdict, upcoming events, key indicators and company information
  */
 export function AnalysisTab({
-  symbol, verdict, indicators, supportResistance, companyInfo, currency, priceHint,
+  symbol, verdict, indicators, supportResistance, events, companyInfo, currency, priceHint,
   isInWatchlist, onAddToWatchlist, onRemoveFromWatchlist
 }) {
   return (
     <div className="space-y-6">
       <VerdictCard verdict={verdict} />
+      <UpcomingEvents events={events} />
       <WatchlistButton
         symbol={symbol}
         isInWatchlist={isInWatchlist}

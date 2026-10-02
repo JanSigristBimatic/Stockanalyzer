@@ -7,7 +7,7 @@ import { analyzeStock, toAnalysisSummary } from '../utils/analysis/analyzeStock'
  * @param {string} symbol - Yahoo symbol
  * @param {string} [period='6M'] - Display period
  * @param {string} [interval='1d'] - Bar interval
- * @returns {Promise<{analysis: Object, fundamentals: Object|null, company: Object|null, meta: Object}|{error: Object}>}
+ * @returns {Promise<{analysis: Object, fundamentals: Object|null, company: Object|null, analystRatings: Object|null, events: Object|null, meta: Object}|{error: Object}>}
  */
 export async function analyzeSymbol(symbol, period = '6M', interval = '1d') {
   const [chart, quoteSummary] = await Promise.all([
@@ -30,6 +30,8 @@ export async function analyzeSymbol(symbol, period = '6M', interval = '1d') {
     analysis,
     fundamentals,
     company: quoteSummary?.company ?? null,
+    analystRatings: quoteSummary?.analystRatings ?? null,
+    events: quoteSummary?.events ?? null,
     meta: {
       currency: chart.currency,
       exchange: chart.exchange,

@@ -83,6 +83,34 @@ export function formatDate(timestamp) {
   return new Date(timestamp * 1000).toLocaleDateString(LOCALE, { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
+const relativeTimeFormat = new Intl.RelativeTimeFormat(LOCALE, { numeric: 'auto' });
+const RELATIVE_TIME_UNITS = [
+  { unit: 'day', seconds: 24 * 60 * 60 },
+  { unit: 'hour', seconds: 60 * 60 },
+  { unit: 'minute', seconds: 60 }
+];
+
+/**
+ * Formats a day offset from today, e.g. "heute", "morgen" or "in 27 Tagen"
+ * @param {number} days - Calendar days from today
+ * @returns {string}
+ */
+export function formatDaysFromToday(days) {
+  return relativeTimeFormat.format(days, 'day');
+}
+
+/**
+ * Formats a past point in time relative to now, e.g. "vor 3 Stunden" or "gestern"
+ * @param {number} timestamp - Unix seconds
+ * @param {number} [nowSeconds]
+ * @returns {string}
+ */
+export function formatTimeAgo(timestamp, nowSeconds = Date.now() / 1000) {
+  const elapsed = Math.max(0, nowSeconds - timestamp);
+  const { unit, seconds } = RELATIVE_TIME_UNITS.find(({ seconds }) => elapsed >= seconds) ?? RELATIVE_TIME_UNITS.at(-1);
+  return relativeTimeFormat.format(-Math.round(elapsed / seconds), unit);
+}
+
 function currencyStyle(currency) {
   return currency ? { style: 'currency', currency } : {};
 }

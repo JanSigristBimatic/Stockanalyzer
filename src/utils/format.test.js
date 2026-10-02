@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatPrice, formatCompactCurrency, formatPercent, toMainCurrency } from './format';
+import { formatPrice, formatCompactCurrency, formatPercent, toMainCurrency, formatDaysFromToday, formatTimeAgo } from './format';
 
 // ICU versions differ in grouping characters and spaces; compare a normalized form
 const normalize = (text) => text.replace(/[\u00a0\u202f]/g, ' ').replace(/[\u2019]/g, "'");
@@ -45,5 +45,27 @@ describe('toMainCurrency', () => {
   it('maps minor units to their main currency', () => {
     expect(toMainCurrency('GBp')).toBe('GBP');
     expect(toMainCurrency('CHF')).toBe('CHF');
+  });
+});
+
+describe('formatDaysFromToday', () => {
+  it('names near days and counts the others', () => {
+    expect(formatDaysFromToday(0)).toBe('heute');
+    expect(formatDaysFromToday(1)).toBe('morgen');
+    expect(formatDaysFromToday(27)).toBe('in 27 Tagen');
+  });
+});
+
+describe('formatTimeAgo', () => {
+  const now = 1_790_000_000;
+
+  it('picks minutes, hours or days by the elapsed time', () => {
+    expect(formatTimeAgo(now - 5 * 60, now)).toBe('vor 5 Minuten');
+    expect(formatTimeAgo(now - 3 * 3600, now)).toBe('vor 3 Stunden');
+    expect(formatTimeAgo(now - 3 * 86400, now)).toBe('vor 3 Tagen');
+  });
+
+  it('treats timestamps in the future as now', () => {
+    expect(formatTimeAgo(now + 120, now)).toBe('in dieser Minute');
   });
 });

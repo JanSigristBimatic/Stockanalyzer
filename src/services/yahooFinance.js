@@ -5,7 +5,7 @@ const DAY_SECONDS = 24 * 60 * 60;
 const MIN_BARS = 20;
 const INTRADAY_INTERVALS = ['15m', '1h'];
 const LONG_PERIODS = ['6M', '1Y', '2Y', '5Y'];
-const QUOTE_SUMMARY_MODULES = 'defaultKeyStatistics,financialData,summaryDetail,assetProfile,price';
+const QUOTE_SUMMARY_MODULES = 'defaultKeyStatistics,financialData,summaryDetail,assetProfile,price,calendarEvents,recommendationTrend';
 
 // Calendar time that covers at least ~210 bars before the display period (SMA 200 warm-up),
 // including nights, weekends and holidays. 15m stays within Yahoo's 60-day limit for 1M.
@@ -190,8 +190,8 @@ export async function fetchExchangeRate(fromCurrency, toCurrency) {
 }
 
 /**
- * Loads fundamentals, company profile and the daily change in one request
- * @returns {Promise<{fundamentals: Object, company: Object, dailyChangePercent: number|null}|null>}
+ * Loads fundamentals, company profile, analyst ratings, upcoming events and the daily change in one request
+ * @returns {Promise<{fundamentals: Object, company: Object, analystRatings: Object|null, events: Object, dailyChangePercent: number|null}|null>}
  */
 export async function fetchQuoteSummary(symbol) {
   const url = `${YAHOO_API}/v10/finance/quoteSummary/${symbol}?modules=${QUOTE_SUMMARY_MODULES}`;
@@ -275,6 +275,29 @@ export function parseQuoteSummary(json, symbol) {
       city: profile.city || null,
       country: profile.country || null
     },
+    analystRatings: parseAnalystRatings(result.recommendationTrend),
+    events: parseEvents(result.calendarEvents),
     dailyChangePercent: changeFraction == null ? null : changeFraction * 100
+  };
+}
+
+const RATING_KEYS = ['strongBuy', 'buy', 'hold', 'sell', 'strongSell'];
+
+// Current month of the recommendation trend; null if no analyst covers the symbol
+function parseAnalystRatings(recommendationTrend) {
+  const current = recommendationTrend?.trend?.find(entry => entry.period === '0m');
+  if (!current) return null;
+
+  const ratings = Object.fromEntries(RATING_KEYS.map(key => [key, current[key] ?? 0]));
+  return RATING_KEYS.some(key => ratings[key] > 0) ? ratings : null;
+}
+
+// For an estimated earnings date Yahoo sends a range, the first entry is its start
+function parseEvents(calendarEvents) {
+  const earnings = calendarEvents?.earnings;
+  return {
+    earningsDate: raw(earnings?.earningsDate?.[0]),
+    isEarningsDateEstimate: earnings?.isEarningsDateEstimate === true,
+    exDividendDate: raw(calendarEvents?.exDividendDate)
   };
 }

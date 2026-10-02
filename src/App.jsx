@@ -95,6 +95,7 @@ export default function App() {
             verdict={analysis.verdict}
             indicators={analysis.indicators}
             supportResistance={analysis.supportResistance}
+            events={result.events}
             companyInfo={result.company}
             currency={result.meta.currency}
             priceHint={result.meta.priceHint}
@@ -105,7 +106,13 @@ export default function App() {
         )}
 
         {activeTab === 'kennzahlen' && result && (
-          <FundamentalsTab data={result.fundamentals} currency={result.meta.currency} priceHint={result.meta.priceHint} />
+          <FundamentalsTab
+            data={result.fundamentals}
+            analystRatings={result.analystRatings}
+            currentPrice={analysis.indicators.lastPrice}
+            currency={result.meta.currency}
+            priceHint={result.meta.priceHint}
+          />
         )}
 
         {activeTab === 'charts' && result && (

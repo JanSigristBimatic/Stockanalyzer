@@ -1,11 +1,12 @@
 import { DollarSign } from 'lucide-react';
 import { Disclaimer } from '../../components/ui';
 import { FundamentalDataCard } from './FundamentalDataCard';
+import { AnalystCard } from './AnalystCard';
 
 /**
  * Fundamentals tab: valuation, profitability, growth and analyst data
  */
-export function FundamentalsTab({ data, currency, priceHint }) {
+export function FundamentalsTab({ data, analystRatings, currentPrice, currency, priceHint }) {
   if (!data) {
     return (
       <div className="text-center py-20">
@@ -18,6 +19,13 @@ export function FundamentalsTab({ data, currency, priceHint }) {
 
   return (
     <div className="space-y-6">
+      <AnalystCard
+        fundamentals={data}
+        ratings={analystRatings}
+        currentPrice={currentPrice}
+        currency={currency}
+        priceHint={priceHint}
+      />
       <FundamentalDataCard data={data} currency={currency} priceHint={priceHint} />
       <Disclaimer />
     </div>

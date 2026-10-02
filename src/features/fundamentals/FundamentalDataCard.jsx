@@ -1,5 +1,4 @@
 import { DollarSign } from 'lucide-react';
-import { getRecommendationLabel } from '../../constants';
 import { formatPrice, formatCompactCurrency } from '../../utils/format';
 import { MetricCard } from './MetricCard';
 
@@ -154,9 +153,9 @@ export function FundamentalDataCard({ data, currency, priceHint }) {
         </div>
       </div>
 
-      {/* Dividende & Analysten */}
+      {/* Dividende & Risiko */}
       <div>
-        <h3 className="text-sm font-semibold text-slate-400 mb-2 uppercase tracking-wide">Dividende & Analysten</h3>
+        <h3 className="text-sm font-semibold text-slate-400 mb-2 uppercase tracking-wide">Dividende & Risiko</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
           {data.dividendYield != null && (
             <MetricCard
@@ -172,24 +171,6 @@ export function FundamentalDataCard({ data, currency, priceHint }) {
               value={data.beta.toFixed(2)}
               subValue={data.beta > 1.5 ? 'Volatil' : data.beta < 0.8 ? 'Defensiv' : 'Markt'}
               highlight={data.beta > 1.5 ? 'red' : data.beta < 0.8 ? 'green' : null}
-            />
-          )}
-          {data.targetMeanPrice != null && (
-            <MetricCard
-              label="Analysten-Kursziel"
-              value={formatPrice(data.targetMeanPrice, currency, priceHint)}
-              subValue={data.numberOfAnalystOpinions && `${data.numberOfAnalystOpinions} Analysten`}
-            />
-          )}
-          {data.recommendationKey && (
-            <MetricCard
-              label="Empfehlung"
-              value={getRecommendationLabel(data.recommendationKey)}
-              highlight={
-                ['strongBuy', 'strong_buy', 'buy'].includes(data.recommendationKey) ? 'green'
-                : ['strongSell', 'strong_sell', 'sell', 'underperform'].includes(data.recommendationKey) ? 'red'
-                : null
-              }
             />
           )}
         </div>

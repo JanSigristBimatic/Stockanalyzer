@@ -109,6 +109,56 @@ describe('parseQuoteSummary', () => {
   it('returns null without a result', () => {
     expect(parseQuoteSummary({ quoteSummary: { result: null } }, 'X')).toBeNull();
   });
+
+  it('takes the analyst ratings of the current month', () => {
+    const withTrend = {
+      quoteSummary: {
+        result: [{
+          recommendationTrend: {
+            trend: [
+              { period: '-1m', strongBuy: 9, buy: 9, hold: 9, sell: 9, strongSell: 9 },
+              { period: '0m', strongBuy: 6, buy: 19, hold: 13, sell: 3 }
+            ]
+          }
+        }]
+      }
+    };
+    expect(parseQuoteSummary(withTrend, 'AAPL').analystRatings)
+      .toEqual({ strongBuy: 6, buy: 19, hold: 13, sell: 3, strongSell: 0 });
+  });
+
+  it('has no analyst ratings without coverage', () => {
+    const uncovered = { quoteSummary: { result: [{ recommendationTrend: { trend: [{ period: '0m', strongBuy: 0, buy: 0, hold: 0, sell: 0, strongSell: 0 }] } }] } };
+    expect(parseQuoteSummary(uncovered, 'X').analystRatings).toBeNull();
+    expect(parseQuoteSummary(json, 'AAPL').analystRatings).toBeNull();
+  });
+
+  it('reads the next earnings and ex-dividend dates', () => {
+    const withEvents = {
+      quoteSummary: {
+        result: [{
+          calendarEvents: {
+            earnings: { earningsDate: [{ raw: 1793304000 }, { raw: 1793563200 }], isEarningsDateEstimate: true },
+            exDividendDate: { raw: 1786320000 }
+          }
+        }]
+      }
+    };
+    expect(parseQuoteSummary(withEvents, 'AAPL').events).toEqual({
+      earningsDate: 1793304000,
+      isEarningsDateEstimate: true,
+      exDividendDate: 1786320000
+    });
+  });
+
+  it('maps an empty earnings calendar to null dates', () => {
+    const empty = { quoteSummary: { result: [{ calendarEvents: { earnings: { earningsDate: [] }, exDividendDate: {} } }] } };
+    expect(parseQuoteSummary(empty, 'NESN.SW').events).toEqual({
+      earningsDate: null,
+      isEarningsDateEstimate: false,
+      exDividendDate: null
+    });
+  });
 });
 
 describe('isMarketOpen', () => {
