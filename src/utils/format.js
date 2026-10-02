@@ -17,6 +17,15 @@ export function toMainCurrency(currency) {
 }
 
 /**
+ * Size of one quote unit in the main currency, e.g. 0.01 for prices quoted in pence (GBp)
+ * @param {string|null} currency - Yahoo currency code
+ * @returns {number}
+ */
+export function mainCurrencyPerQuoteUnit(currency) {
+  return 1 / (MINOR_UNITS[currency]?.factor ?? 1);
+}
+
+/**
  * Formats a quote price in its currency with the decimals Yahoo suggests (priceHint).
  * Minor-unit quotes such as pence are converted to the main currency.
  * @param {number|null} value - Price as quoted by Yahoo

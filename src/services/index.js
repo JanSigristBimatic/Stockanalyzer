@@ -2,6 +2,7 @@ export {
   searchSymbolVariants,
   searchSymbols,
   fetchStockData,
-  fetchQuoteSummary
+  fetchQuoteSummary,
+  fetchExchangeRate
 } from './yahooFinance';
 export { analyzeSymbol, analyzeSymbolSummary } from './analyzeSymbol';

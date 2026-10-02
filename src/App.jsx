@@ -94,6 +94,7 @@ export default function App() {
             symbol={result.symbol}
             verdict={analysis.verdict}
             indicators={analysis.indicators}
+            supportResistance={analysis.supportResistance}
             companyInfo={result.company}
             currency={result.meta.currency}
             priceHint={result.meta.priceHint}

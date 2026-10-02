@@ -176,6 +176,20 @@ function formatBarDate(date, period, interval) {
 }
 
 /**
+ * Current exchange rate between two main currencies, e.g. USD to CHF
+ * @returns {Promise<number|null>} - Units of `toCurrency` per unit of `fromCurrency`, null if unavailable
+ */
+export async function fetchExchangeRate(fromCurrency, toCurrency) {
+  const url = `${YAHOO_API}/v8/finance/chart/${fromCurrency}${toCurrency}=X?interval=1d&range=5d`;
+  const { response } = await fetchWithProxy(url);
+  if (!response || !response.ok) return null;
+  try {
+    const json = await response.json();
+    return json.chart?.result?.[0]?.meta?.regularMarketPrice ?? null;
+  } catch { return null; }
+}
+
+/**
  * Loads fundamentals, company profile and the daily change in one request
  * @returns {Promise<{fundamentals: Object, company: Object, dailyChangePercent: number|null}|null>}
  */
