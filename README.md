@@ -21,7 +21,7 @@ Die App läuft auf http://localhost:3000. Der Yahoo-Proxy ist im Dev-Server eing
 ## Tests und Qualität
 
 ```bash
-npm test        # Vitest: Indikatoren, Urteil, Datenparser, Formatierung, Proxy, Middleware
+npm test        # Vitest: Indikatoren, Urteil, Datenparser, Formatierung, Proxy
 npm run lint    # ESLint inklusive React-Hooks-Regeln
 npm run build   # Produktions-Build
 ```
@@ -33,7 +33,6 @@ Vor jedem Commit sollten alle drei Befehle fehlerfrei durchlaufen.
 ```
 api/yahoo.js            Vercel Function, dünner Adapter auf den Proxy-Kern
 server/yahooProxy.js    Proxy-Kern: Allowlist, Yahoo-Crumb, Caching-Header (Vercel und Dev-Server)
-middleware.js           Basic Auth für das gesamte Deployment
 src/App.jsx             Kompositions-Root mit Tabs
 src/features/           Suche, Analyse, Kennzahlen, Charts, Scanner, Watchlist, Lernen
 src/components/         Layout und wiederverwendbare UI-Bausteine
@@ -47,24 +46,6 @@ Analyse-Tab, Watchlist und Scanner verwenden dieselbe Pipeline (`analyzeStock`) 
 
 ## Deployment (Vercel)
 
-Das Deployment ist per Basic Auth geschützt. Ohne gesetzte Zugangsdaten bleibt die Seite gesperrt (HTTP 500), deshalb zuerst die Umgebungsvariablen anlegen:
+Vercel deployt automatisch aus GitHub: Ein Push auf `master` aktualisiert die Produktion, jeder andere Branch erzeugt eine Vorschau. Alle Deployments sind mit Vercel Authentication geschützt; Zugriff haben nur Mitglieder des Vercel-Teams.
 
-```bash
-vercel env add BASIC_AUTH_USER
-```
-
-```bash
-vercel env add BASIC_AUTH_PASSWORD
-```
-
-Danach eine Vorschau erstellen und prüfen:
-
-```bash
-vercel
-```
-
-Die Produktion wird erst nach erfolgreicher Prüfung der Vorschau aktualisiert:
-
-```bash
-vercel --prod
-```
+Vor einem Push auf `master` müssen `npm test`, `npm run lint` und `npm run build` fehlerfrei durchlaufen.
